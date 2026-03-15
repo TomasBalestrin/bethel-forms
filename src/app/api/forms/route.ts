@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 import { generateSlug } from '@/lib/utils'
 
@@ -8,7 +8,7 @@ export async function GET() {
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: forms, error } = await supabase
+    const { data: forms, error } = await supabaseAdmin
       .from('forms')
       .select('*, responses(count)')
       .eq('user_id', user.id)
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       language: 'pt-BR',
     }
 
-    const { data: form, error } = await supabase
+    const { data: form, error } = await supabaseAdmin
       .from('forms')
       .insert({
         user_id: user.id,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Erro ao criar formulário' }, { status: 500 })
     }
 
-    await supabase.from('form_fields').insert([
+    await supabaseAdmin.from('form_fields').insert([
       {
         form_id: form.id,
         type: 'welcome',

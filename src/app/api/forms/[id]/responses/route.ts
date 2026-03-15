@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function GET(
@@ -10,7 +10,7 @@ export async function GET(
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: form } = await supabase
+    const { data: form } = await supabaseAdmin
       .from('forms')
       .select('id')
       .eq('id', params.id)
@@ -26,7 +26,7 @@ export async function GET(
     const limit = parseInt(url.searchParams.get('limit') || '50')
     const status = url.searchParams.get('status')
 
-    let query = supabase
+    let query = supabaseAdmin
       .from('responses')
       .select('*, response_answers(*, form_fields(*))', { count: 'exact' })
       .eq('form_id', params.id)
@@ -79,7 +79,7 @@ export async function DELETE(
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: form } = await supabase
+    const { data: form } = await supabaseAdmin
       .from('forms')
       .select('id')
       .eq('id', params.id)
@@ -90,7 +90,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
     }
 
-    const { error } = await supabase.from('responses').delete().eq('form_id', params.id)
+    const { error } = await supabaseAdmin.from('responses').delete().eq('form_id', params.id)
     if (error) {
       console.error('Error deleting responses:', error)
       return NextResponse.json({ error: 'Erro ao excluir respostas' }, { status: 500 })

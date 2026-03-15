@@ -2,7 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
-import { supabase } from './supabase'
+import { supabaseAdmin } from './supabase'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Email e senha são obrigatórios')
         }
 
-        const { data: user, error } = await supabase
+        const { data: user, error } = await supabaseAdmin
           .from('users')
           .select('*')
           .eq('email', credentials.email)
@@ -69,14 +69,14 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (account?.provider === 'google' && user.email) {
         // Upsert user on Google sign-in
-        const { data: existingUser } = await supabase
+        const { data: existingUser } = await supabaseAdmin
           .from('users')
           .select('id')
           .eq('email', user.email)
           .single()
 
         if (!existingUser) {
-          const { data: newUser } = await supabase
+          const { data: newUser } = await supabaseAdmin
             .from('users')
             .insert({
               name: user.name || 'Usuário',

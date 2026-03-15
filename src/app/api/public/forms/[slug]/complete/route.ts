@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
   try {
-    const { data: form } = await supabase
+    const { data: form } = await supabaseAdmin
       .from('forms')
       .select('id')
       .eq('slug', params.slug)
@@ -29,7 +29,7 @@ export async function POST(
       )
     }
 
-    const { data: response } = await supabase
+    const { data: response } = await supabaseAdmin
       .from('responses')
       .select('*')
       .eq('id', responseId)
@@ -49,7 +49,7 @@ export async function POST(
       (completedAt.getTime() - startedAt.getTime()) / 1000
     )
 
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await supabaseAdmin
       .from('responses')
       .update({
         status: 'complete',

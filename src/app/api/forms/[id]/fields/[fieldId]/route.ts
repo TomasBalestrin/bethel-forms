@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function PUT(
@@ -10,7 +10,7 @@ export async function PUT(
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: form } = await supabase
+    const { data: form } = await supabaseAdmin
       .from('forms')
       .select('id')
       .eq('id', params.id)
@@ -34,7 +34,7 @@ export async function PUT(
     if (data.conversionEvent !== undefined) updateData.conversion_event = data.conversionEvent
     if (data.type !== undefined) updateData.type = data.type
 
-    const { data: field, error } = await supabase
+    const { data: field, error } = await supabaseAdmin
       .from('form_fields')
       .update(updateData)
       .eq('id', params.fieldId)
@@ -61,7 +61,7 @@ export async function DELETE(
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: form } = await supabase
+    const { data: form } = await supabaseAdmin
       .from('forms')
       .select('id')
       .eq('id', params.id)
@@ -72,7 +72,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
     }
 
-    const { error } = await supabase.from('form_fields').delete().eq('id', params.fieldId)
+    const { error } = await supabaseAdmin.from('form_fields').delete().eq('id', params.fieldId)
     if (error) {
       console.error('Error deleting field:', error)
       return NextResponse.json({ error: 'Erro ao excluir campo' }, { status: 500 })

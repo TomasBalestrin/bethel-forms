@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
   try {
-    const { data: form } = await supabase
+    const { data: form } = await supabaseAdmin
       .from('forms')
       .select('id')
       .eq('slug', params.slug)
@@ -29,7 +29,7 @@ export async function POST(
       )
     }
 
-    const { data: response } = await supabase
+    const { data: response } = await supabaseAdmin
       .from('responses')
       .select('id')
       .eq('id', responseId)
@@ -44,7 +44,7 @@ export async function POST(
     }
 
     // Check for existing answer
-    const { data: existingAnswer } = await supabase
+    const { data: existingAnswer } = await supabaseAdmin
       .from('response_answers')
       .select('id')
       .eq('response_id', responseId)
@@ -53,7 +53,7 @@ export async function POST(
 
     let answer
     if (existingAnswer) {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('response_answers')
         .update({ value, answered_at: new Date().toISOString() })
         .eq('id', existingAnswer.id)
@@ -65,7 +65,7 @@ export async function POST(
       }
       answer = data
     } else {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('response_answers')
         .insert({ response_id: responseId, field_id: fieldId, value })
         .select()

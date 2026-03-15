@@ -9,4 +9,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
+// Client for public/client-side usage (respects RLS)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Admin client for server-side operations (bypasses RLS)
+// Uses service_role key, falls back to anon key
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
+
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})

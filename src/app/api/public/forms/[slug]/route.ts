@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
   try {
-    const { data: form, error } = await supabase
+    const { data: form, error } = await supabaseAdmin
       .from('forms')
       .select('*')
       .eq('slug', params.slug)

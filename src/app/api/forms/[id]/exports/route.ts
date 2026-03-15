@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function POST(
@@ -10,7 +10,7 @@ export async function POST(
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: form } = await supabase
+    const { data: form } = await supabaseAdmin
       .from('forms')
       .select('*')
       .eq('id', params.id)
@@ -23,7 +23,7 @@ export async function POST(
 
     const { format, filters } = await request.json()
 
-    const { data: exportRecord } = await supabase
+    const { data: exportRecord } = await supabaseAdmin
       .from('exports')
       .insert({
         form_id: params.id,
@@ -34,14 +34,14 @@ export async function POST(
       .select()
       .single()
 
-    const { data: responses } = await supabase
+    const { data: responses } = await supabaseAdmin
       .from('responses')
       .select('*, response_answers(*, form_fields(*))')
       .eq('form_id', params.id)
       .eq('status', 'complete')
       .order('created_at', { ascending: false })
 
-    const { data: fields } = await supabase
+    const { data: fields } = await supabaseAdmin
       .from('form_fields')
       .select('*')
       .eq('form_id', params.id)
@@ -72,7 +72,7 @@ export async function POST(
     const csv = [headers.map((h) => `"${h}"`).join(','), ...rows].join('\n')
 
     if (exportRecord) {
-      await supabase
+      await supabaseAdmin
         .from('exports')
         .update({ status: 'ready', completed_at: new Date().toISOString() })
         .eq('id', exportRecord.id)
@@ -98,7 +98,7 @@ export async function GET(
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: exports, error } = await supabase
+    const { data: exports, error } = await supabaseAdmin
       .from('exports')
       .select('*')
       .eq('form_id', params.id)

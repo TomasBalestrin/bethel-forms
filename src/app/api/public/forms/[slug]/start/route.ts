@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { headers } from 'next/headers'
 
 export async function POST(
@@ -7,7 +7,7 @@ export async function POST(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const { data: form, error } = await supabase
+    const { data: form, error } = await supabaseAdmin
       .from('forms')
       .select('*')
       .eq('slug', params.slug)
@@ -47,7 +47,7 @@ export async function POST(
       metadata.utm_content = body.utms.utm_content || null
     }
 
-    const { data: response, error: insertError } = await supabase
+    const { data: response, error: insertError } = await supabaseAdmin
       .from('responses')
       .insert({
         form_id: form.id,

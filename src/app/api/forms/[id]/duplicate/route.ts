@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 import { generateSlug } from '@/lib/utils'
 
@@ -11,7 +11,7 @@ export async function POST(
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: original } = await supabase
+    const { data: original } = await supabaseAdmin
       .from('forms')
       .select('*')
       .eq('id', params.id)
@@ -22,13 +22,13 @@ export async function POST(
       return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
     }
 
-    const { data: originalFields } = await supabase
+    const { data: originalFields } = await supabaseAdmin
       .from('form_fields')
       .select('*')
       .eq('form_id', params.id)
       .order('order', { ascending: true })
 
-    const { data: newForm, error } = await supabase
+    const { data: newForm, error } = await supabaseAdmin
       .from('forms')
       .insert({
         user_id: user.id,
@@ -46,7 +46,7 @@ export async function POST(
     }
 
     if (originalFields && originalFields.length > 0) {
-      await supabase.from('form_fields').insert(
+      await supabaseAdmin.from('form_fields').insert(
         originalFields.map((f: any) => ({
           form_id: newForm.id,
           type: f.type,

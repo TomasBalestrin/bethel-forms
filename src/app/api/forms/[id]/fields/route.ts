@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function POST(
@@ -10,7 +10,7 @@ export async function POST(
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: form } = await supabase
+    const { data: form } = await supabaseAdmin
       .from('forms')
       .select('id')
       .eq('id', params.id)
@@ -23,7 +23,7 @@ export async function POST(
 
     const data = await request.json()
 
-    const { data: maxField } = await supabase
+    const { data: maxField } = await supabaseAdmin
       .from('form_fields')
       .select('order')
       .eq('form_id', params.id)
@@ -33,7 +33,7 @@ export async function POST(
 
     const nextOrder = (maxField?.order ?? -1) + 1
 
-    const { data: field, error } = await supabase
+    const { data: field, error } = await supabaseAdmin
       .from('form_fields')
       .insert({
         form_id: params.id,

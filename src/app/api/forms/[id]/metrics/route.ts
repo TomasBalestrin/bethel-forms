@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function GET(
@@ -10,7 +10,7 @@ export async function GET(
     const user = await getAuthenticatedUser()
     if (!user) return unauthorizedResponse()
 
-    const { data: form } = await supabase
+    const { data: form } = await supabaseAdmin
       .from('forms')
       .select('id')
       .eq('id', params.id)
@@ -22,10 +22,10 @@ export async function GET(
     }
 
     const [totalResult, completeResult, partialResult, durationResult] = await Promise.all([
-      supabase.from('responses').select('*', { count: 'exact', head: true }).eq('form_id', params.id),
-      supabase.from('responses').select('*', { count: 'exact', head: true }).eq('form_id', params.id).eq('status', 'complete'),
-      supabase.from('responses').select('*', { count: 'exact', head: true }).eq('form_id', params.id).eq('status', 'partial'),
-      supabase.from('responses').select('duration_seconds').eq('form_id', params.id).eq('status', 'complete').not('duration_seconds', 'is', null),
+      supabaseAdmin.from('responses').select('*', { count: 'exact', head: true }).eq('form_id', params.id),
+      supabaseAdmin.from('responses').select('*', { count: 'exact', head: true }).eq('form_id', params.id).eq('status', 'complete'),
+      supabaseAdmin.from('responses').select('*', { count: 'exact', head: true }).eq('form_id', params.id).eq('status', 'partial'),
+      supabaseAdmin.from('responses').select('duration_seconds').eq('form_id', params.id).eq('status', 'complete').not('duration_seconds', 'is', null),
     ])
 
     const totalResponses = totalResult.count || 0
