@@ -40,15 +40,16 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
-    ...(process.env.GOOGLE_CLIENT_ID
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? [
           GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
           }),
         ]
       : []),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: 'jwt' as const,
   },
@@ -64,6 +65,36 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).id = token.id as string
       }
       return session
+    },
+    async signIn({ user, account }) {
+      if (account?.provider === 'google' && user.email) {
+        // Upsert user on Google sign-in
+        const { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', user.email)
+          .single()
+
+        if (!existingUser) {
+          const { data: newUser } = await supabase
+            .from('users')
+            .insert({
+              name: user.name || 'Usuário',
+              email: user.email,
+              avatar_url: user.image,
+              email_verified: new Date().toISOString(),
+            })
+            .select('id')
+            .single()
+
+          if (newUser) {
+            user.id = newUser.id
+          }
+        } else {
+          user.id = existingUser.id
+        }
+      }
+      return true
     },
   },
   pages: {
