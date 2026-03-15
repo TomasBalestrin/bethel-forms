@@ -184,6 +184,89 @@ CREATE TABLE IF NOT EXISTS exports (
   completed_at TIMESTAMPTZ
 );
 
+-- ============================================
+-- Row Level Security (RLS) Policies
+-- ============================================
+
+-- Enable RLS on all tables
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE forms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE form_fields ENABLE ROW LEVEL SECURITY;
+ALTER TABLE responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE response_answers ENABLE ROW LEVEL SECURITY;
+
+-- Users: allow service_role full access (for registration via API)
+-- The service_role key bypasses RLS automatically.
+-- These policies allow authenticated users to read/update their own data.
+CREATE POLICY IF NOT EXISTS "Users can read own data"
+  ON users FOR SELECT
+  USING (auth.uid()::text = id::text OR current_setting('role') = 'service_role');
+
+CREATE POLICY IF NOT EXISTS "Users can update own data"
+  ON users FOR UPDATE
+  USING (auth.uid()::text = id::text OR current_setting('role') = 'service_role');
+
+-- Allow inserts from service_role (registration) and anon (fallback)
+CREATE POLICY IF NOT EXISTS "Allow insert for registration"
+  ON users FOR INSERT
+  WITH CHECK (true);
+
+-- Forms: users can manage their own forms
+CREATE POLICY IF NOT EXISTS "Users can manage own forms"
+  ON forms FOR ALL
+  USING (user_id::text = auth.uid()::text OR current_setting('role') = 'service_role');
+
+CREATE POLICY IF NOT EXISTS "Allow insert forms"
+  ON forms FOR INSERT
+  WITH CHECK (true);
+
+-- Form fields: accessible if user owns the form
+CREATE POLICY IF NOT EXISTS "Form fields access"
+  ON form_fields FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM forms WHERE forms.id = form_fields.form_id
+      AND (forms.user_id::text = auth.uid()::text OR current_setting('role') = 'service_role')
+    )
+    OR current_setting('role') = 'service_role'
+  );
+
+CREATE POLICY IF NOT EXISTS "Allow insert form fields"
+  ON form_fields FOR INSERT
+  WITH CHECK (true);
+
+-- Responses: public insert (anyone can submit), owner can read
+CREATE POLICY IF NOT EXISTS "Anyone can insert responses"
+  ON responses FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY IF NOT EXISTS "Form owners can read responses"
+  ON responses FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM forms WHERE forms.id = responses.form_id
+      AND (forms.user_id::text = auth.uid()::text OR current_setting('role') = 'service_role')
+    )
+    OR current_setting('role') = 'service_role'
+  );
+
+-- Response answers: public insert, owner can read
+CREATE POLICY IF NOT EXISTS "Anyone can insert answers"
+  ON response_answers FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY IF NOT EXISTS "Form owners can read answers"
+  ON response_answers FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM responses
+      JOIN forms ON forms.id = responses.form_id
+      WHERE responses.id = response_answers.response_id
+      AND (forms.user_id::text = auth.uid()::text OR current_setting('role') = 'service_role')
+    )
+    OR current_setting('role') = 'service_role'
+  );
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_forms_user_id ON forms(user_id);
 CREATE INDEX IF NOT EXISTS idx_forms_slug ON forms(slug);

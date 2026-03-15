@@ -27,17 +27,22 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, password }),
       })
 
-      const data = await res.json()
+      let data: any = {}
+      try {
+        data = await res.json()
+      } catch {
+        // Response wasn't JSON
+      }
 
       if (!res.ok) {
-        setError(data.error || 'Erro ao criar conta')
+        setError(data.error || `Erro ao criar conta (HTTP ${res.status})`)
         setLoading(false)
         return
       }
 
       router.push('/login?registered=true')
-    } catch {
-      setError('Erro ao criar conta. Tente novamente.')
+    } catch (err: any) {
+      setError(err?.message || 'Erro de conexão. Tente novamente.')
       setLoading(false)
     }
   }
