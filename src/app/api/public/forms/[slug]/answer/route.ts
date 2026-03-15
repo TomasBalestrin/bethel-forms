@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 
 export async function POST(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const form = await prisma.form.findFirst({
-    where: { slug: params.slug, status: 'published' },
-  })
+  const { data: form } = await supabase
+    .from('forms')
+    .select('id')
+    .eq('slug', params.slug)
+    .eq('status', 'published')
+    .single()
 
   if (!form) {
     return NextResponse.json(
@@ -25,10 +28,12 @@ export async function POST(
     )
   }
 
-  // Check response exists
-  const response = await prisma.response.findFirst({
-    where: { id: responseId, formId: form.id },
-  })
+  const { data: response } = await supabase
+    .from('responses')
+    .select('id')
+    .eq('id', responseId)
+    .eq('form_id', form.id)
+    .single()
 
   if (!response) {
     return NextResponse.json(
@@ -37,25 +42,30 @@ export async function POST(
     )
   }
 
-  // Upsert the answer (update if already answered, create if new)
-  const existingAnswer = await prisma.responseAnswer.findFirst({
-    where: { responseId, fieldId },
-  })
+  // Check for existing answer
+  const { data: existingAnswer } = await supabase
+    .from('response_answers')
+    .select('id')
+    .eq('response_id', responseId)
+    .eq('field_id', fieldId)
+    .single()
 
   let answer
   if (existingAnswer) {
-    answer = await prisma.responseAnswer.update({
-      where: { id: existingAnswer.id },
-      data: { value, answeredAt: new Date() },
-    })
+    const { data } = await supabase
+      .from('response_answers')
+      .update({ value, answered_at: new Date().toISOString() })
+      .eq('id', existingAnswer.id)
+      .select()
+      .single()
+    answer = data
   } else {
-    answer = await prisma.responseAnswer.create({
-      data: {
-        responseId,
-        fieldId,
-        value,
-      },
-    })
+    const { data } = await supabase
+      .from('response_answers')
+      .insert({ response_id: responseId, field_id: fieldId, value })
+      .select()
+      .single()
+    answer = data
   }
 
   return NextResponse.json(answer)

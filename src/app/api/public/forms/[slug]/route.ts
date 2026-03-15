@@ -1,22 +1,25 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 
 export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const form = await prisma.form.findFirst({
-    where: { slug: params.slug, status: 'published' },
-  })
+  const { data: form, error } = await supabase
+    .from('forms')
+    .select('*')
+    .eq('slug', params.slug)
+    .eq('status', 'published')
+    .single()
 
-  if (!form) {
+  if (error || !form) {
     return NextResponse.json(
       { error: 'Formulário não encontrado' },
       { status: 404 }
     )
   }
 
-  const publishedVersion = form.publishedVersion as any
+  const publishedVersion = form.published_version as any
   if (!publishedVersion) {
     return NextResponse.json(
       { error: 'Formulário não publicado' },

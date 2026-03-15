@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function GET(
@@ -9,9 +9,12 @@ export async function GET(
   const user = await getAuthenticatedUser()
   if (!user) return unauthorizedResponse()
 
-  const form = await prisma.form.findFirst({
-    where: { id: params.id, userId: user.id },
-  })
+  const { data: form } = await supabase
+    .from('forms')
+    .select('id')
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .single()
 
   if (!form) {
     return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
@@ -21,28 +24,38 @@ export async function GET(
   const page = parseInt(url.searchParams.get('page') || '1')
   const limit = parseInt(url.searchParams.get('limit') || '50')
   const status = url.searchParams.get('status')
-  const search = url.searchParams.get('search')
 
-  const where: any = { formId: params.id }
-  if (status) where.status = status
+  let query = supabase
+    .from('responses')
+    .select('*, response_answers(*, form_fields(*))', { count: 'exact' })
+    .eq('form_id', params.id)
+    .order('created_at', { ascending: false })
+    .range((page - 1) * limit, page * limit - 1)
 
-  const [responses, total] = await Promise.all([
-    prisma.response.findMany({
-      where,
-      include: {
-        answers: {
-          include: { field: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.response.count({ where }),
-  ])
+  if (status) {
+    query = query.eq('status', status)
+  }
+
+  const { data: responses, count, error } = await query
+
+  if (error) {
+    return NextResponse.json({ error: 'Erro ao buscar respostas' }, { status: 500 })
+  }
+
+  const transformed = (responses || []).map((r: any) => ({
+    ...r,
+    answers: (r.response_answers || []).map((a: any) => ({
+      ...a,
+      field: a.form_fields,
+      form_fields: undefined,
+    })),
+    response_answers: undefined,
+  }))
+
+  const total = count || 0
 
   return NextResponse.json({
-    responses,
+    responses: transformed,
     pagination: {
       page,
       limit,
@@ -59,15 +72,18 @@ export async function DELETE(
   const user = await getAuthenticatedUser()
   if (!user) return unauthorizedResponse()
 
-  const form = await prisma.form.findFirst({
-    where: { id: params.id, userId: user.id },
-  })
+  const { data: form } = await supabase
+    .from('forms')
+    .select('id')
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .single()
 
   if (!form) {
     return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
   }
 
-  await prisma.response.deleteMany({ where: { formId: params.id } })
+  await supabase.from('responses').delete().eq('form_id', params.id)
 
   return NextResponse.json({ success: true })
 }

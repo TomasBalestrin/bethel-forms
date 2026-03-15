@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function GET(
@@ -9,24 +9,32 @@ export async function GET(
   const user = await getAuthenticatedUser()
   if (!user) return unauthorizedResponse()
 
-  const form = await prisma.form.findFirst({
-    where: { id: params.id, userId: user.id },
-  })
+  const { data: form } = await supabase
+    .from('forms')
+    .select('id')
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .single()
 
   if (!form) {
     return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
   }
 
-  const [totalResponses, completeResponses, partialResponses] = await Promise.all([
-    prisma.response.count({ where: { formId: params.id } }),
-    prisma.response.count({ where: { formId: params.id, status: 'complete' } }),
-    prisma.response.count({ where: { formId: params.id, status: 'partial' } }),
+  const [totalResult, completeResult, partialResult, durationResult] = await Promise.all([
+    supabase.from('responses').select('*', { count: 'exact', head: true }).eq('form_id', params.id),
+    supabase.from('responses').select('*', { count: 'exact', head: true }).eq('form_id', params.id).eq('status', 'complete'),
+    supabase.from('responses').select('*', { count: 'exact', head: true }).eq('form_id', params.id).eq('status', 'partial'),
+    supabase.from('responses').select('duration_seconds').eq('form_id', params.id).eq('status', 'complete').not('duration_seconds', 'is', null),
   ])
 
-  const avgDuration = await prisma.response.aggregate({
-    where: { formId: params.id, status: 'complete', durationSeconds: { not: null } },
-    _avg: { durationSeconds: true },
-  })
+  const totalResponses = totalResult.count || 0
+  const completeResponses = completeResult.count || 0
+  const partialResponses = partialResult.count || 0
+
+  const durations = (durationResult.data || []).map((r: any) => r.duration_seconds).filter(Boolean)
+  const avgDurationSeconds = durations.length > 0
+    ? Math.round(durations.reduce((a: number, b: number) => a + b, 0) / durations.length)
+    : 0
 
   const completionRate = totalResponses > 0
     ? Math.round((completeResponses / totalResponses) * 100)
@@ -37,6 +45,6 @@ export async function GET(
     completeResponses,
     partialResponses,
     completionRate,
-    avgDurationSeconds: Math.round(avgDuration._avg.durationSeconds || 0),
+    avgDurationSeconds,
   })
 }

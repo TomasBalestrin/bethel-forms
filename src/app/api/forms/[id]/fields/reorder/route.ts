@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function PATCH(
@@ -9,9 +9,12 @@ export async function PATCH(
   const user = await getAuthenticatedUser()
   if (!user) return unauthorizedResponse()
 
-  const form = await prisma.form.findFirst({
-    where: { id: params.id, userId: user.id },
-  })
+  const { data: form } = await supabase
+    .from('forms')
+    .select('id')
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .single()
 
   if (!form) {
     return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
@@ -19,15 +22,14 @@ export async function PATCH(
 
   const { fieldIds } = await request.json()
 
-  // Update order for each field
-  const updates = fieldIds.map((fieldId: string, index: number) =>
-    prisma.formField.update({
-      where: { id: fieldId },
-      data: { order: index },
-    })
+  await Promise.all(
+    fieldIds.map((fieldId: string, index: number) =>
+      supabase
+        .from('form_fields')
+        .update({ order: index })
+        .eq('id', fieldId)
+    )
   )
-
-  await prisma.$transaction(updates)
 
   return NextResponse.json({ success: true })
 }

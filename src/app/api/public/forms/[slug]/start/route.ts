@@ -1,23 +1,25 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 import { headers } from 'next/headers'
 
 export async function POST(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const form = await prisma.form.findFirst({
-    where: { slug: params.slug, status: 'published' },
-  })
+  const { data: form, error } = await supabase
+    .from('forms')
+    .select('*')
+    .eq('slug', params.slug)
+    .eq('status', 'published')
+    .single()
 
-  if (!form) {
+  if (error || !form) {
     return NextResponse.json(
       { error: 'Formulário não encontrado' },
       { status: 404 }
     )
   }
 
-  // Check if form is blocked
   const settings = form.settings as any
   if (form.status === 'blocked') {
     return NextResponse.json(
@@ -36,7 +38,6 @@ export async function POST(
     user_agent: userAgent,
   }
 
-  // Capture UTMs if enabled
   if (settings?.tracking?.utmEnabled && body.utms) {
     metadata.utm_source = body.utms.utm_source || null
     metadata.utm_medium = body.utms.utm_medium || null
@@ -45,13 +46,19 @@ export async function POST(
     metadata.utm_content = body.utms.utm_content || null
   }
 
-  const response = await prisma.response.create({
-    data: {
-      formId: form.id,
+  const { data: response, error: insertError } = await supabase
+    .from('responses')
+    .insert({
+      form_id: form.id,
       status: 'partial',
       metadata,
-    },
-  })
+    })
+    .select('id')
+    .single()
+
+  if (insertError || !response) {
+    return NextResponse.json({ error: 'Erro ao iniciar resposta' }, { status: 500 })
+  }
 
   return NextResponse.json({ responseId: response.id }, { status: 201 })
 }

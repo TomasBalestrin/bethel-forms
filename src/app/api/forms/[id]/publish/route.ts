@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function POST(
@@ -9,17 +9,25 @@ export async function POST(
   const user = await getAuthenticatedUser()
   if (!user) return unauthorizedResponse()
 
-  const form = await prisma.form.findFirst({
-    where: { id: params.id, userId: user.id },
-    include: { fields: { orderBy: { order: 'asc' } } },
-  })
+  const { data: form } = await supabase
+    .from('forms')
+    .select('*')
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .single()
 
   if (!form) {
     return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
   }
 
+  const { data: fields } = await supabase
+    .from('form_fields')
+    .select('*')
+    .eq('form_id', params.id)
+    .order('order', { ascending: true })
+
   const publishedVersion = {
-    fields: form.fields.map((f) => ({
+    fields: (fields || []).map((f: any) => ({
       id: f.id,
       type: f.type,
       order: f.order,
@@ -30,17 +38,24 @@ export async function POST(
       settings: f.settings,
       media: f.media,
       logic: f.logic,
-      conversionEvent: f.conversionEvent,
+      conversionEvent: f.conversion_event,
     })),
   }
 
-  const updated = await prisma.form.update({
-    where: { id: params.id },
-    data: {
+  const { data: updated, error } = await supabase
+    .from('forms')
+    .update({
       status: 'published',
-      publishedVersion,
-    },
-  })
+      published_version: publishedVersion,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', params.id)
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: 'Erro ao publicar formulário' }, { status: 500 })
+  }
 
   return NextResponse.json(updated)
 }

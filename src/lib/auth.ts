@@ -1,12 +1,10 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
-import { prisma } from './prisma'
+import { supabase } from './supabase'
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -19,15 +17,17 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Email e senha são obrigatórios')
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        })
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', credentials.email)
+          .single()
 
-        if (!user || !user.passwordHash) {
+        if (error || !user || !user.password_hash) {
           throw new Error('Email ou senha incorretos')
         }
 
-        const isValid = await bcrypt.compare(credentials.password, user.passwordHash)
+        const isValid = await bcrypt.compare(credentials.password, user.password_hash)
         if (!isValid) {
           throw new Error('Email ou senha incorretos')
         }
@@ -36,7 +36,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
-          image: user.avatarUrl,
+          image: user.avatar_url,
         }
       },
     }),

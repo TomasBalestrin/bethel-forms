@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
@@ -20,9 +20,11 @@ export async function POST(request: Request) {
       )
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    })
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single()
 
     if (existingUser) {
       return NextResponse.json(
@@ -31,25 +33,27 @@ export async function POST(request: Request) {
       )
     }
 
-    const passwordHash = await bcrypt.hash(password, 12)
+    const password_hash = await bcrypt.hash(password, 12)
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-      },
-    })
+    const { data: user, error } = await supabase
+      .from('users')
+      .insert({ name, email, password_hash })
+      .select('id, email, name')
+      .single()
 
-    return NextResponse.json(
-      { id: user.id, email: user.email, name: user.name },
-      { status: 201 }
-    )
+    if (error) {
+      console.error('Registration error:', error)
+      return NextResponse.json(
+        { error: 'Erro ao criar conta' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(user, { status: 201 })
   } catch (error: any) {
     console.error('Registration error:', error)
-    const message = error?.message || 'Erro interno do servidor'
     return NextResponse.json(
-      { error: message },
+      { error: error?.message || 'Erro interno do servidor' },
       { status: 500 }
     )
   }

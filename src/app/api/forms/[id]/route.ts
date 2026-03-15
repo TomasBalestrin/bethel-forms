@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
 export async function GET(
@@ -9,19 +9,24 @@ export async function GET(
   const user = await getAuthenticatedUser()
   if (!user) return unauthorizedResponse()
 
-  const form = await prisma.form.findFirst({
-    where: { id: params.id, userId: user.id },
-    include: {
-      fields: { orderBy: { order: 'asc' } },
-      _count: { select: { responses: true } },
-    },
-  })
+  const { data: form, error } = await supabase
+    .from('forms')
+    .select('*, form_fields(*), responses(count)')
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .single()
 
-  if (!form) {
+  if (error || !form) {
     return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
   }
 
-  return NextResponse.json(form)
+  const fields = (form.form_fields || []).sort((a: any, b: any) => a.order - b.order)
+  return NextResponse.json({
+    ...form,
+    fields,
+    form_fields: undefined,
+    _count: { responses: form.responses?.[0]?.count ?? 0 },
+  })
 }
 
 export async function PUT(
@@ -31,9 +36,12 @@ export async function PUT(
   const user = await getAuthenticatedUser()
   if (!user) return unauthorizedResponse()
 
-  const form = await prisma.form.findFirst({
-    where: { id: params.id, userId: user.id },
-  })
+  const { data: form } = await supabase
+    .from('forms')
+    .select('*')
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .single()
 
   if (!form) {
     return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
@@ -41,14 +49,21 @@ export async function PUT(
 
   const data = await request.json()
 
-  const updated = await prisma.form.update({
-    where: { id: params.id },
-    data: {
+  const { data: updated, error } = await supabase
+    .from('forms')
+    .update({
       name: data.name ?? form.name,
       slug: data.slug ?? form.slug,
       settings: data.settings ?? form.settings,
-    },
-  })
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', params.id)
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: 'Erro ao atualizar formulário' }, { status: 500 })
+  }
 
   return NextResponse.json(updated)
 }
@@ -60,15 +75,18 @@ export async function DELETE(
   const user = await getAuthenticatedUser()
   if (!user) return unauthorizedResponse()
 
-  const form = await prisma.form.findFirst({
-    where: { id: params.id, userId: user.id },
-  })
+  const { data: form } = await supabase
+    .from('forms')
+    .select('id')
+    .eq('id', params.id)
+    .eq('user_id', user.id)
+    .single()
 
   if (!form) {
     return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
   }
 
-  await prisma.form.delete({ where: { id: params.id } })
+  await supabase.from('forms').delete().eq('id', params.id)
 
   return NextResponse.json({ success: true })
 }

@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabase } from '@/lib/supabase'
 
 export async function POST(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const form = await prisma.form.findFirst({
-    where: { slug: params.slug, status: 'published' },
-  })
+  const { data: form } = await supabase
+    .from('forms')
+    .select('id')
+    .eq('slug', params.slug)
+    .eq('status', 'published')
+    .single()
 
   if (!form) {
     return NextResponse.json(
@@ -25,9 +28,12 @@ export async function POST(
     )
   }
 
-  const response = await prisma.response.findFirst({
-    where: { id: responseId, formId: form.id },
-  })
+  const { data: response } = await supabase
+    .from('responses')
+    .select('*')
+    .eq('id', responseId)
+    .eq('form_id', form.id)
+    .single()
 
   if (!response) {
     return NextResponse.json(
@@ -36,20 +42,22 @@ export async function POST(
     )
   }
 
-  const startedAt = new Date(response.startedAt)
+  const startedAt = new Date(response.started_at)
   const completedAt = new Date()
   const durationSeconds = Math.round(
     (completedAt.getTime() - startedAt.getTime()) / 1000
   )
 
-  const updated = await prisma.response.update({
-    where: { id: responseId },
-    data: {
+  const { data: updated } = await supabase
+    .from('responses')
+    .update({
       status: 'complete',
-      completedAt,
-      durationSeconds,
-    },
-  })
+      completed_at: completedAt.toISOString(),
+      duration_seconds: durationSeconds,
+    })
+    .eq('id', responseId)
+    .select()
+    .single()
 
   return NextResponse.json(updated)
 }
