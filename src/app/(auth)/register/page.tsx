@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
+      // 1. Create account
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,7 +42,20 @@ export default function RegisterPage() {
         return
       }
 
-      router.push('/login?registered=true')
+      // 2. Auto-login after registration
+      const loginResult = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      })
+
+      if (loginResult?.error) {
+        // Account created but auto-login failed - redirect to login
+        router.push('/login?registered=true')
+      } else {
+        // Success - go straight to dashboard
+        router.push('/dash')
+      }
     } catch (err: any) {
       setError(err?.message || 'Erro de conexão. Tente novamente.')
       setLoading(false)

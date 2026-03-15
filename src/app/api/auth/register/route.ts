@@ -1,63 +1,8 @@
 import { NextResponse } from 'next/server'
-
-// GET endpoint for diagnostics - visit /api/auth/register in browser to check
-export async function GET() {
-  const checks = {
-    NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    NEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
-    bcryptjs: false,
-    supabase_client: false,
-    supabase_connection: false,
-    supabase_connection_error: null as string | null,
-  }
-
-  try {
-    const bcrypt = await import('bcryptjs')
-    checks.bcryptjs = typeof bcrypt.hash === 'function' || typeof bcrypt.default?.hash === 'function'
-  } catch (e: any) {
-    checks.bcryptjs = false
-  }
-
-  try {
-    const { createClient } = await import('@supabase/supabase-js')
-    checks.supabase_client = typeof createClient === 'function'
-
-    if (checks.NEXT_PUBLIC_SUPABASE_URL && (checks.SUPABASE_SERVICE_ROLE_KEY || checks.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
-      const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      })
-      const { error } = await client.from('users').select('id').limit(1)
-      if (error) {
-        checks.supabase_connection = false
-        checks.supabase_connection_error = `${error.code}: ${error.message}`
-      } else {
-        checks.supabase_connection = true
-      }
-    }
-  } catch (e: any) {
-    checks.supabase_client = false
-    checks.supabase_connection_error = e?.message || 'unknown error'
-  }
-
-  return NextResponse.json({
-    status: 'diagnostic',
-    checks,
-    allOk: Object.entries(checks)
-      .filter(([k]) => !k.includes('error'))
-      .every(([, v]) => v === true),
-  })
-}
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
-    // Dynamic imports to catch module-level errors
-    const bcryptModule = await import('bcryptjs')
-    const bcrypt = bcryptModule.default || bcryptModule
-    const { createClient } = await import('@supabase/supabase-js')
-
     const body = await request.json()
     const { name, email, password } = body
 
@@ -75,45 +20,20 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create Supabase client
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabase = getSupabaseAdmin()
 
-    if (!url) {
-      return NextResponse.json(
-        { error: 'Configuração do servidor incompleta: NEXT_PUBLIC_SUPABASE_URL não definida' },
-        { status: 500 }
-      )
-    }
-
-    const key = serviceKey || anonKey
-    if (!key) {
-      return NextResponse.json(
-        { error: 'Configuração do servidor incompleta: nenhuma chave Supabase configurada' },
-        { status: 500 }
-      )
-    }
-
-    if (!serviceKey) {
-      console.warn('SUPABASE_SERVICE_ROLE_KEY não configurada, usando anon key')
-    }
-
-    const supabase = createClient(url, key, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
-
-    // Check if user exists
+    // Check if user already exists
     const { data: existingUser, error: lookupError } = await supabase
       .from('users')
       .select('id')
       .eq('email', email)
       .single()
 
+    // PGRST116 = "not found" which is the expected case
     if (lookupError && lookupError.code !== 'PGRST116') {
-      console.error('User lookup error:', JSON.stringify(lookupError))
+      console.error('[register] lookup error:', lookupError.message, lookupError.code)
       return NextResponse.json(
-        { error: `Erro ao verificar email: ${lookupError.message} (${lookupError.code})` },
+        { error: `Erro ao verificar email: ${lookupError.message}` },
         { status: 500 }
       )
     }
@@ -125,7 +45,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Hash password
+    // Hash password - dynamic import for bcryptjs v3 compatibility
+    const bcryptModule = await import('bcryptjs')
+    const bcrypt = bcryptModule.default || bcryptModule
     const password_hash = await bcrypt.hash(password, 12)
 
     // Insert user
@@ -136,32 +58,18 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError) {
-      console.error('Insert error:', JSON.stringify({
-        message: insertError.message,
-        code: insertError.code,
-        details: insertError.details,
-        hint: insertError.hint,
-        hasServiceKey: !!serviceKey,
-      }))
-
-      let userMessage = 'Erro ao criar conta'
-      if (insertError.code === '42501') {
-        userMessage = 'Sem permissão para inserir. Configure SUPABASE_SERVICE_ROLE_KEY ou desabilite RLS na tabela users.'
-      } else if (insertError.code === '42P01') {
-        userMessage = 'Tabela "users" não existe. Execute o supabase-setup.sql no SQL Editor.'
-      } else {
-        userMessage += `: ${insertError.message}`
-      }
-
-      return NextResponse.json({ error: userMessage }, { status: 500 })
+      console.error('[register] insert error:', insertError.message, insertError.code, insertError.hint)
+      return NextResponse.json(
+        { error: `Erro ao criar conta: ${insertError.message}` },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json(user, { status: 201 })
   } catch (error: any) {
-    console.error('Registration exception:', error)
-    const message = error?.message || String(error) || 'Erro desconhecido'
+    console.error('[register] exception:', error)
     return NextResponse.json(
-      { error: `Erro no registro: ${message}` },
+      { error: `Erro no servidor: ${error?.message || 'erro desconhecido'}` },
       { status: 500 }
     )
   }
