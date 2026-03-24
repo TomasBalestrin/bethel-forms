@@ -109,7 +109,7 @@ function PublicFormContent() {
 
     // Special handling for welcome screen
     if (currentField.type === 'welcome') {
-      await startForm()
+      startForm() // fire-and-forget, don't block transition
       transition(currentIndex + 1)
       return
     }
@@ -123,49 +123,48 @@ function PublicFormContent() {
     }
     setFieldError('')
 
-    // Save answer
+    // Save answer in background (don't block the transition)
     if (responseId && !['welcome', 'thanks', 'message'].includes(currentField.type)) {
-      try {
-        await fetch(`/api/public/forms/${slug}/answer`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            responseId,
-            fieldId: currentField.id,
-            value: value ?? null,
-          }),
-        })
-
+      const fieldToSave = currentField
+      fetch(`/api/public/forms/${slug}/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          responseId,
+          fieldId: fieldToSave.id,
+          value: value ?? null,
+        }),
+      }).then(() => {
         fireTrackingEvent('SubmitAnswer', {
           form_id: formData.id,
-          field_id: currentField.id,
-          field_title: currentField.title,
+          field_id: fieldToSave.id,
+          field_title: fieldToSave.title,
         }, formData.tracking)
 
-        if (currentField.conversionEvent) {
+        if (fieldToSave.conversionEvent) {
           fireTrackingEvent('FormFlowConversion', {
             form_id: formData.id,
             form_name: formData.name,
-            field_id: currentField.id,
-            field_title: currentField.title,
+            field_id: fieldToSave.id,
+            field_title: fieldToSave.title,
           }, formData.tracking)
         }
-      } catch (err) {
+      }).catch((err) => {
         console.error('Error saving answer:', err)
-      }
+      })
     }
 
     // Check if next is thanks or end of form (complete)
     const nextField = fields[currentIndex + 1]
     if (nextField?.type === 'thanks') {
-      await completeForm()
+      completeForm() // fire-and-forget
       transition(currentIndex + 1)
       return
     }
 
     // If there's no next field, complete and show a default thanks
     if (currentIndex + 1 >= fields.length) {
-      await completeForm()
+      completeForm() // fire-and-forget
       setCompleted(true)
       return
     }
@@ -201,7 +200,7 @@ function PublicFormContent() {
       setCurrentIndex(nextIndex)
       setFieldError('')
       setTransitioning(false)
-    }, 200)
+    }, 120)
   }
 
   if (loading) {
@@ -265,7 +264,7 @@ function PublicFormContent() {
       {/* Main Content */}
       <div
         className={cn(
-          'flex-1 flex items-center justify-center px-4 py-16 transition-opacity duration-200',
+          'flex-1 flex items-center justify-center px-4 py-16 transition-opacity duration-[120ms]',
           transitioning ? 'opacity-0' : 'opacity-100'
         )}
       >
