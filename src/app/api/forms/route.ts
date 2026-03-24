@@ -21,6 +21,7 @@ export async function GET() {
 
     const result = (forms || []).map((f: any) => ({
       ...f,
+      createdAt: f.created_at,
       _count: { responses: f.responses?.[0]?.count ?? 0 },
     }))
 

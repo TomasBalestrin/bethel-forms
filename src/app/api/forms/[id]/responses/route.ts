@@ -46,6 +46,7 @@ export async function GET(
 
     const transformed = (responses || []).map((r: any) => ({
       ...r,
+      createdAt: r.created_at,
       answers: (r.response_answers || []).map((a: any) => ({
         ...a,
         field: a.form_fields,

@@ -31,11 +31,10 @@ export default function DashboardPage() {
     if (authStatus === 'unauthenticated') {
       router.push('/login')
     }
+    if (authStatus === 'authenticated') {
+      fetchForms()
+    }
   }, [authStatus, router])
-
-  useEffect(() => {
-    fetchForms()
-  }, [])
 
   async function fetchForms() {
     try {
