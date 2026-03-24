@@ -1,39 +1,47 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(
   request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const form = await prisma.form.findFirst({
-    where: { slug: params.slug, status: 'published' },
-  })
+  try {
+    const { data: form, error } = await supabaseAdmin
+      .from('forms')
+      .select('*')
+      .eq('slug', params.slug)
+      .eq('status', 'published')
+      .single()
 
-  if (!form) {
-    return NextResponse.json(
-      { error: 'Formulário não encontrado' },
-      { status: 404 }
-    )
+    if (error || !form) {
+      return NextResponse.json(
+        { error: 'Formulário não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const publishedVersion = form.published_version as any
+    if (!publishedVersion) {
+      return NextResponse.json(
+        { error: 'Formulário não publicado' },
+        { status: 404 }
+      )
+    }
+
+    const settings = form.settings as any
+
+    return NextResponse.json({
+      id: form.id,
+      name: form.name,
+      slug: form.slug,
+      fields: publishedVersion.fields || [],
+      appearance: settings?.appearance || {},
+      tracking: settings?.tracking || {},
+      language: settings?.language || 'pt-BR',
+      seo: settings?.seo || {},
+    })
+  } catch (error) {
+    console.error('GET /api/public/forms/[slug] error:', error)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
-
-  const publishedVersion = form.publishedVersion as any
-  if (!publishedVersion) {
-    return NextResponse.json(
-      { error: 'Formulário não publicado' },
-      { status: 404 }
-    )
-  }
-
-  const settings = form.settings as any
-
-  return NextResponse.json({
-    id: form.id,
-    name: form.name,
-    slug: form.slug,
-    fields: publishedVersion.fields || [],
-    appearance: settings?.appearance || {},
-    tracking: settings?.tracking || {},
-    language: settings?.language || 'pt-BR',
-    seo: settings?.seo || {},
-  })
 }

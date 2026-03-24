@@ -1,60 +1,78 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 import { generateSlug } from '@/lib/utils'
 
 export async function GET() {
-  const user = await getAuthenticatedUser()
-  if (!user) return unauthorizedResponse()
+  try {
+    const user = await getAuthenticatedUser()
+    if (!user) return unauthorizedResponse()
 
-  const forms = await prisma.form.findMany({
-    where: { userId: user.id },
-    include: {
-      _count: { select: { responses: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+    const { data: forms, error } = await supabaseAdmin
+      .from('forms')
+      .select('*, responses(count)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
 
-  return NextResponse.json(forms)
+    if (error) {
+      console.error('Error fetching forms:', error)
+      return NextResponse.json({ error: 'Erro ao buscar formulários' }, { status: 500 })
+    }
+
+    const result = (forms || []).map((f: any) => ({
+      ...f,
+      _count: { responses: f.responses?.[0]?.count ?? 0 },
+    }))
+
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('GET /api/forms error:', error)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request) {
-  const user = await getAuthenticatedUser()
-  if (!user) return unauthorizedResponse()
+  try {
+    const user = await getAuthenticatedUser()
+    if (!user) return unauthorizedResponse()
 
-  const { name } = await request.json()
+    const { name } = await request.json()
+    const slug = generateSlug()
 
-  const slug = generateSlug()
+    const defaultSettings = {
+      appearance: {
+        primaryColor: '#2563eb',
+        textColor: '#111827',
+        backgroundColor: '#ffffff',
+        borderStyle: 'rounded',
+        progressBar: 'bar',
+      },
+      seo: {},
+      tracking: { utmEnabled: false },
+      notifications: { ownerEmail: true },
+      language: 'pt-BR',
+    }
 
-  const defaultSettings = {
-    appearance: {
-      primaryColor: '#2563eb',
-      textColor: '#111827',
-      backgroundColor: '#ffffff',
-      borderStyle: 'rounded',
-      progressBar: 'bar',
-    },
-    seo: {},
-    tracking: { utmEnabled: false },
-    notifications: { ownerEmail: true },
-    language: 'pt-BR',
-  }
+    const { data: form, error } = await supabaseAdmin
+      .from('forms')
+      .insert({
+        user_id: user.id,
+        name: name || 'Novo Formulário',
+        slug,
+        settings: defaultSettings,
+        draft_version: { fields: [] },
+      })
+      .select()
+      .single()
 
-  const form = await prisma.form.create({
-    data: {
-      userId: user.id,
-      name: name || 'Novo Formulário',
-      slug,
-      settings: defaultSettings,
-      draftVersion: { fields: [] },
-    },
-  })
+    if (error) {
+      console.error('Error creating form:', error)
+      return NextResponse.json({ error: 'Erro ao criar formulário' }, { status: 500 })
+    }
 
-  // Create default welcome and thanks fields
-  await prisma.formField.createMany({
-    data: [
+    await supabaseAdmin.from('form_fields').insert([
       {
-        formId: form.id,
+        form_id: form.id,
         type: 'welcome',
         order: 0,
         title: 'Bem-vindo!',
@@ -62,15 +80,18 @@ export async function POST(request: Request) {
         settings: {},
       },
       {
-        formId: form.id,
+        form_id: form.id,
         type: 'thanks',
         order: 1,
         title: 'Obrigado!',
         description: 'Suas respostas foram enviadas com sucesso.',
         settings: { thanksType: 'message' },
       },
-    ],
-  })
+    ])
 
-  return NextResponse.json(form, { status: 201 })
+    return NextResponse.json(form, { status: 201 })
+  } catch (error) {
+    console.error('POST /api/forms error:', error)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
+  }
 }

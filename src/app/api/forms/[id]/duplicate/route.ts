@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 import { generateSlug } from '@/lib/utils'
 
@@ -7,45 +7,65 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const user = await getAuthenticatedUser()
-  if (!user) return unauthorizedResponse()
+  try {
+    const user = await getAuthenticatedUser()
+    if (!user) return unauthorizedResponse()
 
-  const original = await prisma.form.findFirst({
-    where: { id: params.id, userId: user.id },
-    include: { fields: { orderBy: { order: 'asc' } } },
-  })
+    const { data: original } = await supabaseAdmin
+      .from('forms')
+      .select('*')
+      .eq('id', params.id)
+      .eq('user_id', user.id)
+      .single()
 
-  if (!original) {
-    return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
+    if (!original) {
+      return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
+    }
+
+    const { data: originalFields } = await supabaseAdmin
+      .from('form_fields')
+      .select('*')
+      .eq('form_id', params.id)
+      .order('order', { ascending: true })
+
+    const { data: newForm, error } = await supabaseAdmin
+      .from('forms')
+      .insert({
+        user_id: user.id,
+        name: `${original.name} (cópia)`,
+        slug: generateSlug(),
+        settings: original.settings,
+        draft_version: original.draft_version,
+      })
+      .select()
+      .single()
+
+    if (error || !newForm) {
+      console.error('Error duplicating form:', error)
+      return NextResponse.json({ error: 'Erro ao duplicar formulário' }, { status: 500 })
+    }
+
+    if (originalFields && originalFields.length > 0) {
+      await supabaseAdmin.from('form_fields').insert(
+        originalFields.map((f: any) => ({
+          form_id: newForm.id,
+          type: f.type,
+          order: f.order,
+          title: f.title,
+          description: f.description,
+          required: f.required,
+          placeholder: f.placeholder,
+          settings: f.settings,
+          media: f.media,
+          logic: f.logic,
+          conversion_event: f.conversion_event,
+        }))
+      )
+    }
+
+    return NextResponse.json(newForm, { status: 201 })
+  } catch (error) {
+    console.error('POST /api/forms/[id]/duplicate error:', error)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
-
-  const newForm = await prisma.form.create({
-    data: {
-      userId: user.id,
-      name: `${original.name} (cópia)`,
-      slug: generateSlug(),
-      settings: original.settings as any,
-      draftVersion: original.draftVersion as any,
-    },
-  })
-
-  if (original.fields.length > 0) {
-    await prisma.formField.createMany({
-      data: original.fields.map((f) => ({
-        formId: newForm.id,
-        type: f.type,
-        order: f.order,
-        title: f.title,
-        description: f.description,
-        required: f.required,
-        placeholder: f.placeholder,
-        settings: f.settings as any,
-        media: f.media as any,
-        logic: f.logic as any,
-        conversionEvent: f.conversionEvent,
-      })),
-    })
-  }
-
-  return NextResponse.json(newForm, { status: 201 })
 }

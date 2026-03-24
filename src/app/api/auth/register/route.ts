@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
-import { prisma } from '@/lib/prisma'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password } = await request.json()
+    const body = await request.json()
+    const { name, email, password } = body
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -20,9 +20,23 @@ export async function POST(request: Request) {
       )
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    })
+    const supabase = getSupabaseAdmin()
+
+    // Check if user already exists
+    const { data: existingUser, error: lookupError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single()
+
+    // PGRST116 = "not found" which is the expected case
+    if (lookupError && lookupError.code !== 'PGRST116') {
+      console.error('[register] lookup error:', lookupError.message, lookupError.code)
+      return NextResponse.json(
+        { error: `Erro ao verificar email: ${lookupError.message}` },
+        { status: 500 }
+      )
+    }
 
     if (existingUser) {
       return NextResponse.json(
@@ -31,24 +45,31 @@ export async function POST(request: Request) {
       )
     }
 
-    const passwordHash = await bcrypt.hash(password, 12)
+    // Hash password - dynamic import for bcryptjs v3 compatibility
+    const bcryptModule = await import('bcryptjs')
+    const bcrypt = bcryptModule.default || bcryptModule
+    const password_hash = await bcrypt.hash(password, 12)
 
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-      },
-    })
+    // Insert user
+    const { data: user, error: insertError } = await supabase
+      .from('users')
+      .insert({ name, email, password_hash })
+      .select('id, email, name')
+      .single()
 
+    if (insertError) {
+      console.error('[register] insert error:', insertError.message, insertError.code, insertError.hint)
+      return NextResponse.json(
+        { error: `Erro ao criar conta: ${insertError.message}` },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(user, { status: 201 })
+  } catch (error: any) {
+    console.error('[register] exception:', error)
     return NextResponse.json(
-      { id: user.id, email: user.email, name: user.name },
-      { status: 201 }
-    )
-  } catch (error) {
-    console.error('Registration error:', error)
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
+      { error: `Erro no servidor: ${error?.message || 'erro desconhecido'}` },
       { status: 500 }
     )
   }

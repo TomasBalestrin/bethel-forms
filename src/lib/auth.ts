@@ -1,12 +1,8 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import GoogleProvider from 'next-auth/providers/google'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
-import bcrypt from 'bcryptjs'
-import { prisma } from './prisma'
+import { getSupabaseAdmin } from './supabase'
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
       name: 'credentials',
@@ -19,15 +15,23 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Email e senha são obrigatórios')
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        })
+        const supabase = getSupabaseAdmin()
 
-        if (!user || !user.passwordHash) {
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', credentials.email)
+          .single()
+
+        if (error || !user || !user.password_hash) {
           throw new Error('Email ou senha incorretos')
         }
 
-        const isValid = await bcrypt.compare(credentials.password, user.passwordHash)
+        // Dynamic import to handle bcryptjs v3 compatibility
+        const bcryptModule = await import('bcryptjs')
+        const bcrypt = bcryptModule.default || bcryptModule
+
+        const isValid = await bcrypt.compare(credentials.password, user.password_hash)
         if (!isValid) {
           throw new Error('Email ou senha incorretos')
         }
@@ -36,19 +40,12 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
-          image: user.avatarUrl,
+          image: user.avatar_url,
         }
       },
     }),
-    ...(process.env.GOOGLE_CLIENT_ID
-      ? [
-          GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID!,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-          }),
-        ]
-      : []),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: 'jwt' as const,
   },
