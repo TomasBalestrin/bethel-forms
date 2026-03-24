@@ -23,29 +23,51 @@ export async function POST(
 
     const data = await request.json()
 
-    const { data: maxField } = await supabaseAdmin
+    // Get all existing fields ordered
+    const { data: existingFields } = await supabaseAdmin
       .from('form_fields')
-      .select('order')
+      .select('id, type, order')
       .eq('form_id', params.id)
-      .order('order', { ascending: false })
-      .limit(1)
-      .single()
+      .order('order', { ascending: true })
 
-    const nextOrder = (maxField?.order ?? -1) + 1
+    const allFields = existingFields || []
+
+    // Insert position: before thanks if adding a non-thanks field, otherwise at end
+    let insertOrder: number
+    if (data.type !== 'thanks') {
+      const thanksIndex = allFields.findIndex((f) => f.type === 'thanks')
+      if (thanksIndex > -1) {
+        insertOrder = thanksIndex
+        // Shift thanks and any fields after it
+        const toShift = allFields.slice(thanksIndex)
+        await Promise.all(
+          toShift.map((f, i) =>
+            supabaseAdmin
+              .from('form_fields')
+              .update({ order: thanksIndex + 1 + i })
+              .eq('id', f.id)
+          )
+        )
+      } else {
+        insertOrder = allFields.length
+      }
+    } else {
+      insertOrder = allFields.length
+    }
 
     const { data: field, error } = await supabaseAdmin
       .from('form_fields')
       .insert({
         form_id: params.id,
         type: data.type,
-        order: nextOrder,
+        order: insertOrder,
         title: data.title || '',
-        description: data.description,
+        description: data.description || '',
         required: data.required ?? false,
-        placeholder: data.placeholder,
+        placeholder: data.placeholder || '',
         settings: data.settings || {},
-        media: data.media,
-        logic: data.logic,
+        media: data.media || null,
+        logic: data.logic || null,
         conversion_event: data.conversionEvent ?? false,
       })
       .select()
@@ -56,7 +78,20 @@ export async function POST(
       return NextResponse.json({ error: 'Erro ao criar campo' }, { status: 500 })
     }
 
-    return NextResponse.json(field, { status: 201 })
+    return NextResponse.json({
+      id: field.id,
+      formId: field.form_id,
+      type: field.type,
+      order: field.order,
+      title: field.title,
+      description: field.description,
+      required: field.required,
+      placeholder: field.placeholder,
+      settings: field.settings,
+      media: field.media,
+      logic: field.logic,
+      conversionEvent: field.conversion_event,
+    }, { status: 201 })
   } catch (error) {
     console.error('POST /api/forms/[id]/fields error:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })

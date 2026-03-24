@@ -33,11 +33,13 @@ export async function PUT(
     if (data.logic !== undefined) updateData.logic = data.logic
     if (data.conversionEvent !== undefined) updateData.conversion_event = data.conversionEvent
     if (data.type !== undefined) updateData.type = data.type
+    if (data.order !== undefined) updateData.order = data.order
 
     const { data: field, error } = await supabaseAdmin
       .from('form_fields')
       .update(updateData)
       .eq('id', params.fieldId)
+      .eq('form_id', params.id)
       .select()
       .single()
 
@@ -72,10 +74,30 @@ export async function DELETE(
       return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
     }
 
-    const { error } = await supabaseAdmin.from('form_fields').delete().eq('id', params.fieldId)
+    const { error } = await supabaseAdmin
+      .from('form_fields')
+      .delete()
+      .eq('id', params.fieldId)
+      .eq('form_id', params.id)
+
     if (error) {
       console.error('Error deleting field:', error)
       return NextResponse.json({ error: 'Erro ao excluir campo' }, { status: 500 })
+    }
+
+    // Renumber remaining fields to close order gaps
+    const { data: remaining } = await supabaseAdmin
+      .from('form_fields')
+      .select('id')
+      .eq('form_id', params.id)
+      .order('order', { ascending: true })
+
+    if (remaining) {
+      await Promise.all(
+        remaining.map((f, i) =>
+          supabaseAdmin.from('form_fields').update({ order: i }).eq('id', f.id)
+        )
+      )
     }
 
     return NextResponse.json({ success: true })

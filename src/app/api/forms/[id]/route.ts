@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
+function mapFieldToCamel(f: any) {
+  return {
+    id: f.id,
+    formId: f.form_id,
+    type: f.type,
+    order: f.order,
+    title: f.title,
+    description: f.description,
+    required: f.required,
+    placeholder: f.placeholder,
+    settings: f.settings,
+    media: f.media,
+    logic: f.logic,
+    conversionEvent: f.conversion_event,
+    createdAt: f.created_at,
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -21,11 +39,20 @@ export async function GET(
       return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
     }
 
-    const fields = (form.form_fields || []).sort((a: any, b: any) => a.order - b.order)
+    const fields = (form.form_fields || [])
+      .sort((a: any, b: any) => a.order - b.order)
+      .map(mapFieldToCamel)
+
     return NextResponse.json({
-      ...form,
+      id: form.id,
+      name: form.name,
+      slug: form.slug,
+      status: form.status,
+      settings: form.settings,
+      publishedVersion: form.published_version,
+      createdAt: form.created_at,
+      updatedAt: form.updated_at,
       fields,
-      form_fields: undefined,
       _count: { responses: form.responses?.[0]?.count ?? 0 },
     })
   } catch (error) {
@@ -55,20 +82,25 @@ export async function PUT(
 
     const data = await request.json()
 
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    }
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.slug !== undefined) updateData.slug = data.slug
+    if (data.settings !== undefined) updateData.settings = data.settings
+
     const { data: updated, error } = await supabaseAdmin
       .from('forms')
-      .update({
-        name: data.name ?? form.name,
-        slug: data.slug ?? form.slug,
-        settings: data.settings ?? form.settings,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', params.id)
       .select()
       .single()
 
     if (error) {
       console.error('Error updating form:', error)
+      if (error.code === '23505') {
+        return NextResponse.json({ error: 'Este slug já está em uso' }, { status: 409 })
+      }
       return NextResponse.json({ error: 'Erro ao atualizar formulário' }, { status: 500 })
     }
 
