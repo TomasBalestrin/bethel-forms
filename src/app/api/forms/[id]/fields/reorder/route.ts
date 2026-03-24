@@ -23,12 +23,29 @@ export async function PATCH(
 
     const { fieldIds } = await request.json()
 
+    if (!Array.isArray(fieldIds) || fieldIds.length === 0) {
+      return NextResponse.json({ error: 'fieldIds é obrigatório' }, { status: 400 })
+    }
+
+    // Verify all fieldIds belong to this form
+    const { data: existingFields } = await supabaseAdmin
+      .from('form_fields')
+      .select('id')
+      .eq('form_id', params.id)
+
+    const validIds = new Set((existingFields || []).map((f) => f.id))
+    const invalid = fieldIds.filter((id: string) => !validIds.has(id))
+    if (invalid.length > 0) {
+      return NextResponse.json({ error: 'IDs de campo inválidos' }, { status: 400 })
+    }
+
     const results = await Promise.all(
       fieldIds.map((fieldId: string, index: number) =>
         supabaseAdmin
           .from('form_fields')
           .update({ order: index })
           .eq('id', fieldId)
+          .eq('form_id', params.id)
       )
     )
 

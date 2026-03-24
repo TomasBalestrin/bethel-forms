@@ -31,7 +31,7 @@ export async function POST(
 
     const { data: response } = await supabaseAdmin
       .from('responses')
-      .select('id')
+      .select('id, status')
       .eq('id', responseId)
       .eq('form_id', form.id)
       .single()
@@ -40,6 +40,13 @@ export async function POST(
       return NextResponse.json(
         { error: 'Resposta não encontrada' },
         { status: 404 }
+      )
+    }
+
+    if (response.status === 'complete') {
+      return NextResponse.json(
+        { error: 'Resposta já finalizada' },
+        { status: 400 }
       )
     }
 

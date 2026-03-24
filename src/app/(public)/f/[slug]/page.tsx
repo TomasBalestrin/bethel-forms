@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { FormFieldInput } from '@/components/form-renderer/form-field-input'
 import { TrackingScripts, fireTrackingEvent } from '@/components/form-renderer/tracking-scripts'
@@ -25,6 +25,7 @@ function PublicFormContent() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
   const [responseId, setResponseId] = useState<string | null>(null)
+  const responseIdRef = useRef<string | null>(null)
   const [fieldError, setFieldError] = useState('')
   const [transitioning, setTransitioning] = useState(false)
   const [completed, setCompleted] = useState(false)
@@ -53,7 +54,7 @@ function PublicFormContent() {
   }
 
   async function startForm() {
-    if (responseId) return
+    if (responseIdRef.current) return
 
     const utms: Record<string, string> = {}
     ;['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'].forEach((key) => {
@@ -69,6 +70,7 @@ function PublicFormContent() {
       })
       if (res.ok) {
         const data = await res.json()
+        responseIdRef.current = data.responseId
         setResponseId(data.responseId)
         fireTrackingEvent('StartForm', { form_id: formData.id }, formData.tracking)
       }
@@ -101,6 +103,12 @@ function PublicFormContent() {
       const digits = value.replace(/\D/g, '')
       if (digits.length < 10 || digits.length > 11) return 'Informe um telefone válido'
     }
+    if (field.type === 'satisfaction_scale' && field.required && (value === undefined || value === null)) {
+      return 'Selecione uma opção'
+    }
+    if (field.type === 'multiple_choice' && field.required && !value) {
+      return 'Selecione uma opção'
+    }
     return null
   }
 
@@ -124,13 +132,14 @@ function PublicFormContent() {
     setFieldError('')
 
     // Save answer in background (don't block the transition)
-    if (responseId && !['welcome', 'thanks', 'message'].includes(currentField.type)) {
+    const rid = responseIdRef.current
+    if (rid && !['welcome', 'thanks', 'message'].includes(currentField.type)) {
       const fieldToSave = currentField
       fetch(`/api/public/forms/${slug}/answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          responseId,
+          responseId: rid,
           fieldId: fieldToSave.id,
           value: value ?? null,
         }),
@@ -174,12 +183,13 @@ function PublicFormContent() {
   }
 
   async function completeForm() {
-    if (!responseId) return
+    const rid = responseIdRef.current
+    if (!rid) return
     try {
       await fetch(`/api/public/forms/${slug}/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ responseId }),
+        body: JSON.stringify({ responseId: rid }),
       })
       setCompleted(true)
       fireTrackingEvent('EndForm', { form_id: formData.id }, formData.tracking)
@@ -305,9 +315,10 @@ function PublicFormContent() {
                   {currentField.description && (
                     <p className="text-lg text-gray-500 mb-6">{currentField.description}</p>
                   )}
-                  {currentField.settings?.thanksType === 'redirect' && currentField.settings?.redirectUrl && (
+                  {currentField.settings?.thanksType === 'redirect' && currentField.settings?.redirectUrl && /^https?:\/\//.test(currentField.settings.redirectUrl) && (
                     <a
                       href={currentField.settings.redirectUrl}
+                      rel="noopener noreferrer"
                       className="inline-block px-6 py-2.5 rounded-lg text-white font-medium"
                       style={{ backgroundColor: primaryColor }}
                     >

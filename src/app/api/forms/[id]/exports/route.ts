@@ -79,7 +79,12 @@ export async function POST(
         meta?.utm_medium || '',
         meta?.utm_campaign || '',
       ]
-      return row.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(',')
+      return row.map((v: any) => {
+        let s = String(v).replace(/"/g, '""')
+        // Prevent CSV formula injection
+        if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+        return `"${s}"`
+      }).join(',')
     })
 
     const csv = [csvHeaders.map((h) => `"${h}"`).join(','), ...rows].join('\n')
@@ -94,7 +99,7 @@ export async function POST(
     return new Response(csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${form.name}.csv"`,
+        'Content-Disposition': `attachment; filename="${form.name.replace(/["\n\r]/g, '_')}.csv"`,
       },
     })
   } catch (error) {
