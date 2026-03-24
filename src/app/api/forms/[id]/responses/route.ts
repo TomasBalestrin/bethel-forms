@@ -45,14 +45,28 @@ export async function GET(
     }
 
     const transformed = (responses || []).map((r: any) => ({
-      ...r,
+      id: r.id,
+      formId: r.form_id,
+      status: r.status,
+      metadata: r.metadata,
       createdAt: r.created_at,
+      completedAt: r.completed_at,
+      durationSeconds: r.duration_seconds,
       answers: (r.response_answers || []).map((a: any) => ({
-        ...a,
-        field: a.form_fields,
-        form_fields: undefined,
+        id: a.id,
+        responseId: a.response_id,
+        fieldId: a.field_id,
+        value: a.value,
+        answeredAt: a.answered_at,
+        field: a.form_fields
+          ? {
+              id: a.form_fields.id,
+              type: a.form_fields.type,
+              title: a.form_fields.title,
+              order: a.form_fields.order,
+            }
+          : null,
       })),
-      response_answers: undefined,
     }))
 
     const total = count || 0

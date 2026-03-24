@@ -113,7 +113,9 @@ export default function ResponsesPage() {
   ) || []
 
   function getAnswerValue(response: any, fieldId: string): string {
-    const answer = response.answers?.find((a: any) => a.fieldId === fieldId)
+    const answer = response.answers?.find(
+      (a: any) => a.fieldId === fieldId || a.field_id === fieldId
+    )
     if (!answer) return '-'
     const val = answer.value
     if (val === null || val === undefined) return '-'

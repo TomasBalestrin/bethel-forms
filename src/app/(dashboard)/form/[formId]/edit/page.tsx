@@ -18,7 +18,6 @@ import {
   Send,
   GripVertical,
   Trash2,
-  Copy,
   Palette,
   Settings,
   Type,
@@ -45,7 +44,7 @@ const FIELD_ICONS: Record<string, any> = {
 export default function FormEditorPage() {
   const router = useRouter()
   const params = useParams()
-  const { data: session, status: authStatus } = useSession()
+  const { status: authStatus } = useSession()
   const formId = params.formId as string
 
   const [form, setForm] = useState<any>(null)
@@ -56,15 +55,18 @@ export default function FormEditorPage() {
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [publishError, setPublishError] = useState('')
   const autoSaveTimer = useRef<NodeJS.Timeout | null>(null)
+  const isSaving = useRef(false)
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
   }, [authStatus, router])
 
   useEffect(() => {
-    fetchForm()
-  }, [formId])
+    if (authStatus === 'authenticated') fetchForm()
+  }, [formId, authStatus])
 
   async function fetchForm() {
     try {
@@ -73,7 +75,7 @@ export default function FormEditorPage() {
         const data = await res.json()
         setForm(data)
         setFields(data.fields || [])
-        if (data.fields?.length > 0) {
+        if (!selectedFieldId && data.fields?.length > 0) {
           setSelectedFieldId(data.fields[0].id)
         }
       }
@@ -82,21 +84,25 @@ export default function FormEditorPage() {
     }
   }
 
-  // Autosave with debounce
+  // Debounced autosave
   const scheduleAutoSave = useCallback(() => {
     setHasChanges(true)
+    setSaveError('')
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => {
       saveForm()
-    }, 3000)
-  }, [formId, fields, form])
+    }, 2000)
+  }, [formId])
 
   async function saveForm() {
-    if (!form) return
+    if (!form || isSaving.current) return
+    isSaving.current = true
     setSaving(true)
+    setSaveError('')
+
     try {
-      // Save form settings
-      await fetch(`/api/forms/${formId}`, {
+      // 1. Save form settings
+      const formRes = await fetch(`/api/forms/${formId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -106,53 +112,91 @@ export default function FormEditorPage() {
         }),
       })
 
-      // Save each field
-      for (const field of fields) {
+      if (!formRes.ok) {
+        const err = await formRes.json().catch(() => ({}))
+        setSaveError(err.error || 'Erro ao salvar formulário')
+        return
+      }
+
+      // 2. Save fields - create new ones first, then update existing
+      const updatedFields = [...fields]
+      for (let i = 0; i < updatedFields.length; i++) {
+        const field = updatedFields[i]
         if (field._isNew) {
           const res = await fetch(`/api/forms/${formId}/fields`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(field),
+            body: JSON.stringify({
+              ...field,
+              order: i,
+            }),
           })
           if (res.ok) {
             const saved = await res.json()
-            field.id = saved.id
-            delete field._isNew
+            // Update the field with server-assigned ID
+            if (selectedFieldId === field.id) {
+              setSelectedFieldId(saved.id)
+            }
+            updatedFields[i] = { ...field, ...saved, _isNew: undefined }
+          } else {
+            const err = await res.json().catch(() => ({}))
+            setSaveError(err.error || 'Erro ao criar campo')
+            return
           }
         } else {
           await fetch(`/api/forms/${formId}/fields/${field.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(field),
+            body: JSON.stringify({
+              ...field,
+              order: i,
+            }),
           })
         }
       }
 
+      setFields(updatedFields)
       setHasChanges(false)
     } catch (error) {
       console.error('Error saving:', error)
+      setSaveError('Erro de conexão ao salvar')
+    } finally {
+      setSaving(false)
+      isSaving.current = false
     }
-    setSaving(false)
   }
 
   async function publishForm() {
     setPublishing(true)
+    setPublishError('')
+
+    // Save first to ensure all changes are persisted
     await saveForm()
+    if (saveError) {
+      setPublishing(false)
+      return
+    }
+
     try {
       const res = await fetch(`/api/forms/${formId}/publish`, { method: 'POST' })
-      if (res.ok) {
-        const updated = await res.json()
-        setForm({ ...form, status: updated.status })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setPublishError(data.error || 'Erro ao publicar')
+      } else {
+        setForm({ ...form, status: data.status })
+        setPublishError('')
       }
     } catch (error) {
       console.error('Error publishing:', error)
+      setPublishError('Erro de conexão ao publicar')
     }
     setPublishing(false)
   }
 
   function addField(type: string) {
     const newField = {
-      id: `temp_${Date.now()}`,
+      id: `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       _isNew: true,
       formId,
       type,
@@ -161,10 +205,19 @@ export default function FormEditorPage() {
       description: '',
       required: false,
       placeholder: '',
-      settings: type === 'multiple_choice' ? { options: [
-        { id: '1', label: 'Opção 1', value: 'option_1' },
-        { id: '2', label: 'Opção 2', value: 'option_2' },
-      ] } : type === 'satisfaction_scale' ? { scaleMin: 0, scaleMax: 10 } : type === 'thanks' ? { thanksType: 'message' } : {},
+      settings:
+        type === 'multiple_choice'
+          ? {
+              options: [
+                { id: '1', label: 'Opção 1', value: 'option_1' },
+                { id: '2', label: 'Opção 2', value: 'option_2' },
+              ],
+            }
+          : type === 'satisfaction_scale'
+            ? { scaleMin: 0, scaleMax: 10 }
+            : type === 'thanks'
+              ? { thanksType: 'message' }
+              : {},
       conversionEvent: false,
     }
 
@@ -179,6 +232,7 @@ export default function FormEditorPage() {
     }
 
     setSelectedFieldId(newField.id)
+    setShowFieldSelector(false)
     scheduleAutoSave()
   }
 
@@ -190,6 +244,9 @@ export default function FormEditorPage() {
   async function deleteField(fieldId: string) {
     const field = fields.find((f) => f.id === fieldId)
     if (!field) return
+
+    // Don't allow deleting welcome or thanks
+    if (field.type === 'welcome' || field.type === 'thanks') return
 
     if (!field._isNew) {
       await fetch(`/api/forms/${formId}/fields/${fieldId}`, { method: 'DELETE' })
@@ -204,6 +261,7 @@ export default function FormEditorPage() {
   }
 
   function moveField(fromIndex: number, toIndex: number) {
+    if (toIndex < 0 || toIndex >= fields.length) return
     const updated = [...fields]
     const [moved] = updated.splice(fromIndex, 1)
     updated.splice(toIndex, 0, moved)
@@ -247,6 +305,8 @@ export default function FormEditorPage() {
         <div className="flex items-center gap-2">
           {saving && <span className="text-xs text-gray-400">Salvando...</span>}
           {hasChanges && !saving && <span className="text-xs text-yellow-500">Alterações não salvas</span>}
+          {saveError && <span className="text-xs text-red-500">{saveError}</span>}
+          {publishError && <span className="text-xs text-red-500">{publishError}</span>}
           <Button variant="outline" size="sm" onClick={saveForm} disabled={saving}>
             <Save size={14} className="mr-1" />
             Salvar
@@ -254,12 +314,18 @@ export default function FormEditorPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.open(`/f/${form.slug}`, '_blank')}
+            onClick={() => {
+              if (form.status === 'published') {
+                window.open(`/f/${form.slug}`, '_blank')
+              } else {
+                alert('Publique o formulário primeiro para visualizar.')
+              }
+            }}
           >
             <Eye size={14} className="mr-1" />
             Preview
           </Button>
-          <Button size="sm" onClick={publishForm} disabled={publishing}>
+          <Button size="sm" onClick={publishForm} disabled={publishing || saving}>
             <Send size={14} className="mr-1" />
             {publishing ? 'Publicando...' : 'Publicar'}
           </Button>
@@ -284,6 +350,7 @@ export default function FormEditorPage() {
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {fields.map((field, index) => {
               const Icon = FIELD_ICONS[field.type] || Type
+              const isProtected = field.type === 'welcome' || field.type === 'thanks'
               return (
                 <div
                   key={field.id}
@@ -300,17 +367,19 @@ export default function FormEditorPage() {
                   <span className="flex-1 truncate text-gray-700">
                     {field.title || `${field.type} (sem título)`}
                   </span>
-                  <div className="hidden group-hover:flex items-center gap-0.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteField(field.id)
-                      }}
-                      className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
+                  {!isProtected && (
+                    <div className="hidden group-hover:flex items-center gap-0.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteField(field.id)
+                        }}
+                        className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })}

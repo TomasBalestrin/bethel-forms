@@ -36,7 +36,7 @@ export async function POST(
 
     const { data: responses } = await supabaseAdmin
       .from('responses')
-      .select('*, response_answers(*, form_fields(*))')
+      .select('*, response_answers(*)')
       .eq('form_id', params.id)
       .eq('status', 'complete')
       .order('created_at', { ascending: false })
@@ -45,16 +45,29 @@ export async function POST(
       .from('form_fields')
       .select('*')
       .eq('form_id', params.id)
-      .not('type', 'in', '("welcome","thanks","message")')
       .order('order', { ascending: true })
 
-    const headers = ['Data', ...(fields || []).map((f: any) => f.title), 'Status', 'UTM Source', 'UTM Medium', 'UTM Campaign']
+    // Filter out non-question fields
+    const questionFields = (fields || []).filter(
+      (f: any) => !['welcome', 'thanks', 'message'].includes(f.type)
+    )
+
+    const csvHeaders = [
+      'Data',
+      ...questionFields.map((f: any) => f.title || f.type),
+      'Status',
+      'UTM Source',
+      'UTM Medium',
+      'UTM Campaign',
+    ]
+
     const rows = (responses || []).map((r: any) => {
       const meta = r.metadata as any
       const answers = r.response_answers || []
       const row = [
         new Date(r.created_at).toISOString(),
-        ...(fields || []).map((f: any) => {
+        ...questionFields.map((f: any) => {
+          // Match using field_id (snake_case from DB)
           const answer = answers.find((a: any) => a.field_id === f.id)
           const value = answer?.value
           if (value === null || value === undefined) return ''
@@ -69,7 +82,7 @@ export async function POST(
       return row.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(',')
     })
 
-    const csv = [headers.map((h) => `"${h}"`).join(','), ...rows].join('\n')
+    const csv = [csvHeaders.map((h) => `"${h}"`).join(','), ...rows].join('\n')
 
     if (exportRecord) {
       await supabaseAdmin

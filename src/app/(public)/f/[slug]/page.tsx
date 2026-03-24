@@ -1,12 +1,20 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { FormFieldInput } from '@/components/form-renderer/form-field-input'
 import { TrackingScripts, fireTrackingEvent } from '@/components/form-renderer/tracking-scripts'
 import { cn } from '@/lib/utils'
 
 export default function PublicFormPage() {
+  return (
+    <Suspense>
+      <PublicFormContent />
+    </Suspense>
+  )
+}
+
+function PublicFormContent() {
   const params = useParams()
   const searchParams = useSearchParams()
   const slug = params.slug as string
@@ -147,15 +155,22 @@ export default function PublicFormPage() {
       }
     }
 
-    // Check if next is thanks (complete)
+    // Check if next is thanks or end of form (complete)
     const nextField = fields[currentIndex + 1]
-    if (nextField?.type === 'thanks' || currentIndex + 1 >= fields.length) {
+    if (nextField?.type === 'thanks') {
       await completeForm()
       transition(currentIndex + 1)
       return
     }
 
-    // Move to message fields automatically
+    // If there's no next field, complete and show a default thanks
+    if (currentIndex + 1 >= fields.length) {
+      await completeForm()
+      setCompleted(true)
+      return
+    }
+
+    // Move to next field
     transition(currentIndex + 1)
   }
 
@@ -255,6 +270,15 @@ export default function PublicFormPage() {
         )}
       >
         <div className="w-full max-w-xl">
+          {/* Fallback thanks screen when no thanks field exists */}
+          {completed && !currentField && (
+            <div className="text-center">
+              <div className="text-5xl mb-4">🎉</div>
+              <h1 className="text-3xl font-bold mb-3">Obrigado!</h1>
+              <p className="text-lg text-gray-500">Suas respostas foram enviadas com sucesso.</p>
+            </div>
+          )}
+
           {currentField && (
             <>
               {/* Welcome */}

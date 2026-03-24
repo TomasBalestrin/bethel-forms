@@ -43,11 +43,26 @@ export async function POST(
       )
     }
 
-    const startedAt = new Date(response.started_at)
+    // Don't re-complete already completed responses
+    if (response.status === 'complete') {
+      return NextResponse.json(response)
+    }
+
     const completedAt = new Date()
-    const durationSeconds = Math.round(
-      (completedAt.getTime() - startedAt.getTime()) / 1000
-    )
+    let durationSeconds = 0
+
+    // Use started_at or created_at for duration calculation
+    const startTime = response.started_at || response.created_at
+    if (startTime) {
+      const startedAt = new Date(startTime)
+      if (!isNaN(startedAt.getTime())) {
+        durationSeconds = Math.round(
+          (completedAt.getTime() - startedAt.getTime()) / 1000
+        )
+        // Cap at 1 hour to exclude abandoned sessions
+        if (durationSeconds > 3600) durationSeconds = 0
+      }
+    }
 
     const { data: updated, error } = await supabaseAdmin
       .from('responses')
