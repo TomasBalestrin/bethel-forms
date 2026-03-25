@@ -10,7 +10,6 @@ export async function GET(
       .from('forms')
       .select('*')
       .eq('slug', params.slug)
-      .eq('status', 'published')
       .single()
 
     if (error || !form) {
@@ -20,21 +19,40 @@ export async function GET(
       )
     }
 
-    const publishedVersion = form.published_version as any
-    if (!publishedVersion) {
-      return NextResponse.json(
-        { error: 'Formulário não publicado' },
-        { status: 404 }
-      )
-    }
-
     const settings = form.settings as any
+    const publishedVersion = form.published_version as any
+
+    // Use published version if available, otherwise load draft fields for preview
+    let fields: any[] = []
+    if (publishedVersion?.fields) {
+      fields = publishedVersion.fields
+    } else {
+      // Load draft fields directly from database (preview mode)
+      const { data: draftFields } = await supabaseAdmin
+        .from('form_fields')
+        .select('*')
+        .eq('form_id', form.id)
+        .order('order', { ascending: true })
+
+      fields = (draftFields || []).map((f: any) => ({
+        id: f.id,
+        type: f.type,
+        title: f.title,
+        description: f.description,
+        placeholder: f.placeholder,
+        required: f.required,
+        settings: f.settings || {},
+        media: f.media,
+        conversionEvent: f.conversion_event,
+      }))
+    }
 
     return NextResponse.json({
       id: form.id,
       name: form.name,
       slug: form.slug,
-      fields: publishedVersion.fields || [],
+      status: form.status,
+      fields,
       appearance: settings?.appearance || {},
       tracking: settings?.tracking || {},
       language: settings?.language || 'pt-BR',

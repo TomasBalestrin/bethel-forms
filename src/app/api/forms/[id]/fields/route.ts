@@ -23,6 +23,17 @@ export async function POST(
 
     const data = await request.json()
 
+    const VALID_FIELD_TYPES = [
+      'welcome', 'thanks', 'message',
+      'short_text', 'long_text', 'email', 'phone', 'number',
+      'multiple_choice', 'checkbox', 'satisfaction_scale',
+      'date', 'url', 'file_upload', 'currency',
+    ]
+
+    if (!data.type || !VALID_FIELD_TYPES.includes(data.type)) {
+      return NextResponse.json({ error: 'Tipo de campo inválido' }, { status: 400 })
+    }
+
     // Get all existing fields ordered
     const { data: existingFields } = await supabaseAdmin
       .from('form_fields')

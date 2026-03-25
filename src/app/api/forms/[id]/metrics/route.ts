@@ -32,7 +32,10 @@ export async function GET(
     const completeResponses = completeResult.count || 0
     const partialResponses = partialResult.count || 0
 
-    const durations = (durationResult.data || []).map((r: any) => r.duration_seconds).filter(Boolean)
+    // Filter out outliers (> 1 hour)
+    const durations = (durationResult.data || [])
+      .map((r: any) => r.duration_seconds)
+      .filter((d: number) => d > 0 && d <= 3600)
     const avgDurationSeconds = durations.length > 0
       ? Math.round(durations.reduce((a: number, b: number) => a + b, 0) / durations.length)
       : 0

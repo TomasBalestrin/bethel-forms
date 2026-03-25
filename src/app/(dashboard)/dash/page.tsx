@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const [forms, setForms] = useState<FormItem[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') {
@@ -51,6 +52,8 @@ export default function DashboardPage() {
   }
 
   async function createForm() {
+    if (creating) return
+    setCreating(true)
     try {
       const res = await fetch('/api/forms', {
         method: 'POST',
@@ -64,6 +67,8 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error creating form:', error)
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -164,9 +169,9 @@ export default function DashboardPage() {
               className="pl-10"
             />
           </div>
-          <Button onClick={createForm}>
+          <Button onClick={createForm} disabled={creating}>
             <Plus size={18} className="mr-2" />
-            Novo Formulário
+            {creating ? 'Criando...' : 'Novo Formulário'}
           </Button>
         </div>
 

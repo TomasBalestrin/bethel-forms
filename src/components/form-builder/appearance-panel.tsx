@@ -168,7 +168,7 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
         <div className="space-y-1.5">
           <Label>Slug personalizado</Label>
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-400 whitespace-nowrap">/f/</span>
+            <span className="text-xs text-gray-400 whitespace-nowrap">/</span>
             <Input
               value={settings?._slug || ''}
               onChange={(e) =>

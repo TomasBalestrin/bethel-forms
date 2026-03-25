@@ -68,6 +68,13 @@ export default function FormEditorPage() {
     if (authStatus === 'authenticated') fetchForm()
   }, [formId, authStatus])
 
+  // Cleanup autosave timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    }
+  }, [])
+
   async function fetchForm() {
     try {
       const res = await fetch(`/api/forms/${formId}`)
@@ -94,8 +101,8 @@ export default function FormEditorPage() {
     }, 2000)
   }, [formId])
 
-  async function saveForm() {
-    if (!form || isSaving.current) return
+  async function saveForm(): Promise<boolean> {
+    if (!form || isSaving.current) return false
     isSaving.current = true
     setSaving(true)
     setSaveError('')
@@ -115,7 +122,7 @@ export default function FormEditorPage() {
       if (!formRes.ok) {
         const err = await formRes.json().catch(() => ({}))
         setSaveError(err.error || 'Erro ao salvar formulário')
-        return
+        return false
       }
 
       // 2. Save fields - create new ones first, then update existing
@@ -141,7 +148,7 @@ export default function FormEditorPage() {
           } else {
             const err = await res.json().catch(() => ({}))
             setSaveError(err.error || 'Erro ao criar campo')
-            return
+            return false
           }
         } else {
           await fetch(`/api/forms/${formId}/fields/${field.id}`, {
@@ -157,9 +164,11 @@ export default function FormEditorPage() {
 
       setFields(updatedFields)
       setHasChanges(false)
+      return true
     } catch (error) {
       console.error('Error saving:', error)
       setSaveError('Erro de conexão ao salvar')
+      return false
     } finally {
       setSaving(false)
       isSaving.current = false
@@ -171,8 +180,8 @@ export default function FormEditorPage() {
     setPublishError('')
 
     // Save first to ensure all changes are persisted
-    await saveForm()
-    if (saveError) {
+    const saved = await saveForm()
+    if (!saved) {
       setPublishing(false)
       return
     }
@@ -315,10 +324,10 @@ export default function FormEditorPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              if (form.status === 'published') {
-                window.open(`/f/${form.slug}`, '_blank')
+              if (form.slug) {
+                window.open(`/${form.slug}`, '_blank')
               } else {
-                alert('Publique o formulário primeiro para visualizar.')
+                alert('Salve o formulário primeiro para visualizar.')
               }
             }}
           >

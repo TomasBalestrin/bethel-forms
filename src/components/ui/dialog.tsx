@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { X } from 'lucide-react'
 
 interface DialogProps {
   open: boolean
@@ -11,10 +10,19 @@ interface DialogProps {
 }
 
 function Dialog({ open, onOpenChange, children }: DialogProps) {
+  React.useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onOpenChange(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, onOpenChange])
+
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
       <div
         className="fixed inset-0 bg-black/50"
         onClick={() => onOpenChange(false)}

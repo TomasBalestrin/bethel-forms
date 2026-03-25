@@ -23,6 +23,13 @@ export function FormFieldInput({
   const settings = field.settings || {}
   const [otherValue, setOtherValue] = useState('')
 
+  function formatPhone(digits: string): string {
+    const d = digits.replace(/\D/g, '')
+    if (d.length > 6) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+    if (d.length > 2) return `(${d.slice(0, 2)}) ${d.slice(2)}`
+    return d
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -65,22 +72,31 @@ export function FormFieldInput({
       {field.type === 'phone' && (
         <input
           type="tel"
-          value={value || ''}
+          value={formatPhone(value || '')}
           onChange={(e) => {
-            let v = e.target.value.replace(/\D/g, '')
-            if (v.length > 11) v = v.slice(0, 11)
-            if (v.length > 6) {
-              v = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`
-            } else if (v.length > 2) {
-              v = `(${v.slice(0, 2)}) ${v.slice(2)}`
-            }
-            onChange(v)
+            // Store only digits, format on display
+            const digits = e.target.value.replace(/\D/g, '').slice(0, 11)
+            onChange(digits)
           }}
           onKeyDown={handleKeyDown}
           placeholder={field.placeholder || '(11) 99999-9999'}
           autoFocus
           className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors"
           style={{ borderColor: value ? primaryColor : undefined }}
+        />
+      )}
+
+      {/* Number */}
+      {field.type === 'number' && (
+        <input
+          type="number"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+          onKeyDown={handleKeyDown}
+          placeholder={field.placeholder || 'Digite um número...'}
+          autoFocus
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          style={{ borderColor: value !== undefined && value !== '' ? primaryColor : undefined }}
         />
       )}
 
