@@ -45,6 +45,11 @@ body {
   animation: shake 0.5s ease-in-out;
 }
 
+/* Custom placeholder color via CSS custom property */
+.custom-placeholder::placeholder {
+  color: var(--placeholder-color, #9ca3af);
+}
+
 /* Progress bar animation */
 .progress-bar-fill {
   transition: width 0.3s ease;

@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface AppearancePanelProps {
   settings: any
@@ -17,6 +20,48 @@ const FONT_WEIGHT_OPTIONS = [
   { value: '800', label: 'Extra Bold' },
 ]
 
+function CollapsibleSection({
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  title: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="border-t border-gray-200">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full py-3 text-sm font-semibold text-gray-900 uppercase tracking-wide hover:text-blue-600 transition-colors"
+      >
+        {title}
+        {open ? <ChevronDown size={14} className="text-gray-400" /> : <ChevronRight size={14} className="text-gray-400" />}
+      </button>
+      {open && <div className="pb-4 space-y-4">{children}</div>}
+    </div>
+  )
+}
+
+function ColorRow({ label, value, onChange, hint }: { label: string; value: string; onChange: (v: string) => void; hint?: string }) {
+  return (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      {hint && <p className="text-[10px] text-gray-400">{hint}</p>}
+      <div className="flex gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-10 h-10 rounded cursor-pointer border border-gray-300"
+        />
+        <Input value={value} onChange={(e) => onChange(e.target.value)} className="flex-1" />
+      </div>
+    </div>
+  )
+}
+
 export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
   const appearance = settings?.appearance || {}
 
@@ -28,160 +73,74 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
   }
 
   return (
-    <div className="p-4 space-y-4">
-      <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide">
-        Aparência
-      </h3>
+    <div className="p-4">
+      {/* Aparência */}
+      <CollapsibleSection title="Aparência" defaultOpen={true}>
+        <ColorRow label="Cor principal" value={appearance.primaryColor || '#2563eb'} onChange={(v) => updateAppearance('primaryColor', v)} />
+        <ColorRow label="Cor do texto" value={appearance.textColor || '#111827'} onChange={(v) => updateAppearance('textColor', v)} />
+        <ColorRow label="Cor da descrição" value={appearance.descriptionColor || '#6b7280'} onChange={(v) => updateAppearance('descriptionColor', v)} />
+        <ColorRow label="Cor do placeholder" value={appearance.placeholderColor || '#9ca3af'} onChange={(v) => updateAppearance('placeholderColor', v)} hint="Texto de exemplo nos campos de resposta." />
+        <ColorRow label="Cor das opções" value={appearance.optionColor || '#d1d5db'} onChange={(v) => updateAppearance('optionColor', v)} hint="Borda e letras das opções de múltipla escolha." />
+        <ColorRow label="Cor de fundo" value={appearance.backgroundColor || '#ffffff'} onChange={(v) => updateAppearance('backgroundColor', v)} />
 
-      {/* Colors */}
-      <div className="space-y-1.5">
-        <Label>Cor principal</Label>
-        <div className="flex gap-2">
-          <input
-            type="color"
-            value={appearance.primaryColor || '#2563eb'}
-            onChange={(e) => updateAppearance('primaryColor', e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer border border-gray-300"
-          />
+        {/* Logo */}
+        <div className="space-y-1">
+          <Label>Logotipo</Label>
+          <p className="text-[10px] text-gray-400">Aparece no canto superior esquerdo do formulário.</p>
+          {appearance.logoUrl && (
+            <div className="flex items-center gap-3 p-2 border border-gray-200 rounded-lg bg-gray-50">
+              <img
+                src={appearance.logoUrl}
+                alt="Logo"
+                className="h-8 max-w-[120px] object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+              <button
+                onClick={() => updateAppearance('logoUrl', '')}
+                className="ml-auto text-xs text-red-500 hover:text-red-700"
+              >
+                Remover
+              </button>
+            </div>
+          )}
           <Input
-            value={appearance.primaryColor || '#2563eb'}
-            onChange={(e) => updateAppearance('primaryColor', e.target.value)}
-            placeholder="#2563eb"
-            className="flex-1"
+            value={appearance.logoUrl || ''}
+            onChange={(e) => updateAppearance('logoUrl', e.target.value)}
+            placeholder="https://exemplo.com/logo.png"
           />
         </div>
-      </div>
 
-      <div className="space-y-1.5">
-        <Label>Cor do texto</Label>
-        <div className="flex gap-2">
-          <input
-            type="color"
-            value={appearance.textColor || '#111827'}
-            onChange={(e) => updateAppearance('textColor', e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer border border-gray-300"
-          />
-          <Input
-            value={appearance.textColor || '#111827'}
-            onChange={(e) => updateAppearance('textColor', e.target.value)}
-            className="flex-1"
-          />
+        <div className="space-y-1.5">
+          <Label>Barra de progresso</Label>
+          <select
+            value={appearance.progressBar || 'bar'}
+            onChange={(e) => updateAppearance('progressBar', e.target.value)}
+            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
+          >
+            <option value="bar">Barra horizontal</option>
+            <option value="steps">Indicador de passos</option>
+            <option value="hidden">Ocultar</option>
+          </select>
         </div>
-      </div>
 
-      <div className="space-y-1.5">
-        <Label>Cor da descrição</Label>
-        <div className="flex gap-2">
-          <input
-            type="color"
-            value={appearance.descriptionColor || '#6b7280'}
-            onChange={(e) => updateAppearance('descriptionColor', e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer border border-gray-300"
-          />
-          <Input
-            value={appearance.descriptionColor || '#6b7280'}
-            onChange={(e) => updateAppearance('descriptionColor', e.target.value)}
-            className="flex-1"
-          />
+        <div className="space-y-1.5">
+          <Label>Estilo das bordas</Label>
+          <select
+            value={appearance.borderStyle || 'rounded'}
+            onChange={(e) => updateAppearance('borderStyle', e.target.value)}
+            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
+          >
+            <option value="rounded">Arredondado</option>
+            <option value="square">Reto</option>
+            <option value="pill">Pill</option>
+          </select>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="space-y-1.5">
-        <Label>Cor das opções</Label>
-        <p className="text-[10px] text-gray-400">Texto e borda das opções de múltipla escolha.</p>
-        <div className="flex gap-2">
-          <input
-            type="color"
-            value={appearance.optionColor || '#d1d5db'}
-            onChange={(e) => updateAppearance('optionColor', e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer border border-gray-300"
-          />
-          <Input
-            value={appearance.optionColor || '#d1d5db'}
-            onChange={(e) => updateAppearance('optionColor', e.target.value)}
-            className="flex-1"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Cor de fundo</Label>
-        <div className="flex gap-2">
-          <input
-            type="color"
-            value={appearance.backgroundColor || '#ffffff'}
-            onChange={(e) => updateAppearance('backgroundColor', e.target.value)}
-            className="w-10 h-10 rounded cursor-pointer border border-gray-300"
-          />
-          <Input
-            value={appearance.backgroundColor || '#ffffff'}
-            onChange={(e) => updateAppearance('backgroundColor', e.target.value)}
-            className="flex-1"
-          />
-        </div>
-      </div>
-
-      {/* Logo */}
-      <div className="space-y-1.5">
-        <Label>Logotipo</Label>
-        <p className="text-[10px] text-gray-400">Aparece no canto superior esquerdo do formulário.</p>
-        {appearance.logoUrl && (
-          <div className="flex items-center gap-3 p-2 border border-gray-200 rounded-lg bg-gray-50">
-            <img
-              src={appearance.logoUrl}
-              alt="Logo"
-              className="h-8 max-w-[120px] object-contain"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-            />
-            <button
-              onClick={() => updateAppearance('logoUrl', '')}
-              className="ml-auto text-xs text-red-500 hover:text-red-700"
-            >
-              Remover
-            </button>
-          </div>
-        )}
-        <Input
-          value={appearance.logoUrl || ''}
-          onChange={(e) => updateAppearance('logoUrl', e.target.value)}
-          placeholder="https://exemplo.com/logo.png"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Barra de progresso</Label>
-        <select
-          value={appearance.progressBar || 'bar'}
-          onChange={(e) => updateAppearance('progressBar', e.target.value)}
-          className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
-        >
-          <option value="bar">Barra horizontal</option>
-          <option value="steps">Indicador de passos</option>
-          <option value="hidden">Ocultar</option>
-        </select>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Estilo das bordas</Label>
-        <select
-          value={appearance.borderStyle || 'rounded'}
-          onChange={(e) => updateAppearance('borderStyle', e.target.value)}
-          className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
-        >
-          <option value="rounded">Arredondado</option>
-          <option value="square">Reto</option>
-          <option value="pill">Pill</option>
-        </select>
-      </div>
-
-      {/* Typography */}
-      <div className="pt-4 border-t border-gray-200">
-        <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-3">
-          Tipografia
-        </h3>
-
+      {/* Tipografia */}
+      <CollapsibleSection title="Tipografia" defaultOpen={false}>
         {/* Title */}
-        <div className="mb-4">
+        <div>
           <Label className="text-xs text-gray-500 uppercase tracking-wider">Título</Label>
           <div className="grid grid-cols-2 gap-2 mt-1.5">
             <div>
@@ -211,7 +170,7 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
         </div>
 
         {/* Description */}
-        <div className="mb-4">
+        <div>
           <Label className="text-xs text-gray-500 uppercase tracking-wider">Descrição</Label>
           <div className="grid grid-cols-2 gap-2 mt-1.5">
             <div>
@@ -241,7 +200,7 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
         </div>
 
         {/* Answer */}
-        <div className="mb-2">
+        <div>
           <Label className="text-xs text-gray-500 uppercase tracking-wider">Resposta</Label>
           <div className="grid grid-cols-2 gap-2 mt-1.5">
             <div>
@@ -269,71 +228,53 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
             </div>
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* Tracking section */}
-      <div className="pt-4 border-t border-gray-200">
-        <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-3">
-          Rastreamento
-        </h3>
-
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label>Meta Pixel ID</Label>
-            <Input
-              value={settings?.tracking?.pixelId || ''}
-              onChange={(e) =>
-                onUpdate({
-                  ...settings,
-                  tracking: { ...settings?.tracking, pixelId: e.target.value },
-                })
-              }
-              placeholder="Ex: 123456789012345"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Google Analytics ID</Label>
-            <Input
-              value={settings?.tracking?.gaId || ''}
-              onChange={(e) =>
-                onUpdate({
-                  ...settings,
-                  tracking: { ...settings?.tracking, gaId: e.target.value },
-                })
-              }
-              placeholder="Ex: G-XXXXXXXXXX"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label>Capturar UTMs</Label>
-            <button
-              onClick={() =>
-                onUpdate({
-                  ...settings,
-                  tracking: { ...settings?.tracking, utmEnabled: !settings?.tracking?.utmEnabled },
-                })
-              }
-              className={`relative w-11 h-6 rounded-full transition-colors ${
-                settings?.tracking?.utmEnabled ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                  settings?.tracking?.utmEnabled ? 'translate-x-5' : ''
-                }`}
-              />
-            </button>
-          </div>
+      {/* Rastreamento */}
+      <CollapsibleSection title="Rastreamento" defaultOpen={false}>
+        <div className="space-y-1.5">
+          <Label>Meta Pixel ID</Label>
+          <Input
+            value={settings?.tracking?.pixelId || ''}
+            onChange={(e) =>
+              onUpdate({ ...settings, tracking: { ...settings?.tracking, pixelId: e.target.value } })
+            }
+            placeholder="Ex: 123456789012345"
+          />
         </div>
-      </div>
 
-      {/* Slug section */}
-      <div className="pt-4 border-t border-gray-200">
-        <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wide mb-3">
-          Link
-        </h3>
+        <div className="space-y-1.5">
+          <Label>Google Analytics ID</Label>
+          <Input
+            value={settings?.tracking?.gaId || ''}
+            onChange={(e) =>
+              onUpdate({ ...settings, tracking: { ...settings?.tracking, gaId: e.target.value } })
+            }
+            placeholder="Ex: G-XXXXXXXXXX"
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <Label>Capturar UTMs</Label>
+          <button
+            onClick={() =>
+              onUpdate({ ...settings, tracking: { ...settings?.tracking, utmEnabled: !settings?.tracking?.utmEnabled } })
+            }
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              settings?.tracking?.utmEnabled ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                settings?.tracking?.utmEnabled ? 'translate-x-5' : ''
+              }`}
+            />
+          </button>
+        </div>
+      </CollapsibleSection>
+
+      {/* Link */}
+      <CollapsibleSection title="Link" defaultOpen={false}>
         <div className="space-y-1.5">
           <Label>Slug personalizado</Label>
           <div className="flex items-center gap-1">
@@ -347,7 +288,7 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
             />
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
     </div>
   )
 }

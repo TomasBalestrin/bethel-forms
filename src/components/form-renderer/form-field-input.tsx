@@ -32,7 +32,14 @@ export function FormFieldInput({
   const settings = field.settings || {}
   const textColor = appearance.textColor || '#111827'
   const optionColor = appearance.optionColor || '#d1d5db'
+  const placeholderColor = appearance.placeholderColor || '#9ca3af'
   const [otherValue, setOtherValue] = useState('')
+
+  // Inject dynamic placeholder color via CSS custom property
+  const inputStyle: React.CSSProperties = {
+    color: textColor,
+    '--placeholder-color': placeholderColor,
+  } as React.CSSProperties
 
   function formatPhone(digits: string): string {
     const d = digits.replace(/\D/g, '')
@@ -60,8 +67,8 @@ export function FormFieldInput({
           placeholder={field.placeholder || 'Digite sua resposta...'}
           maxLength={settings.maxLength || undefined}
           autoFocus
-          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors"
-          style={{ borderColor: value ? primaryColor : undefined }}
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors custom-placeholder"
+          style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
         />
       )}
 
@@ -74,8 +81,8 @@ export function FormFieldInput({
           onKeyDown={handleKeyDown}
           placeholder={field.placeholder || 'nome@email.com'}
           autoFocus
-          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors"
-          style={{ borderColor: value ? primaryColor : undefined }}
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors custom-placeholder"
+          style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
         />
       )}
 
@@ -92,8 +99,8 @@ export function FormFieldInput({
           onKeyDown={handleKeyDown}
           placeholder={field.placeholder || '(11) 99999-9999'}
           autoFocus
-          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors"
-          style={{ borderColor: value ? primaryColor : undefined }}
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors custom-placeholder"
+          style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
         />
       )}
 
@@ -106,8 +113,8 @@ export function FormFieldInput({
           onKeyDown={handleKeyDown}
           placeholder={field.placeholder || 'Digite um número...'}
           autoFocus
-          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          style={{ borderColor: value !== undefined && value !== '' ? primaryColor : undefined }}
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none custom-placeholder"
+          style={{ ...inputStyle, borderColor: value !== undefined && value !== '' ? primaryColor : undefined }}
         />
       )}
 
