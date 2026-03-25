@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 
+export const dynamic = 'force-dynamic'
+
 function mapFieldToCamel(f: any) {
   return {
     id: f.id,

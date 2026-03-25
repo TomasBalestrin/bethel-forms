@@ -108,9 +108,26 @@ export default function ResponsesPage() {
     }
   }
 
-  const fields = form?.fields?.filter(
+  // Build table columns from current form fields + any extra fields found in responses
+  // This ensures old responses (from before field changes) still display correctly
+  const currentFields = (form?.fields || []).filter(
     (f: any) => !['welcome', 'thanks', 'message'].includes(f.type)
-  ) || []
+  )
+  const currentFieldIds = new Set(currentFields.map((f: any) => f.id))
+
+  // Collect fields from response answers that may no longer exist in the current form
+  const extraFieldsMap = new Map<string, any>()
+  responses.forEach((r: any) => {
+    r.answers?.forEach((a: any) => {
+      if (a.field && !currentFieldIds.has(a.field.id) && !['welcome', 'thanks', 'message'].includes(a.field.type)) {
+        extraFieldsMap.set(a.field.id, a.field)
+      }
+    })
+  })
+  const extraFields = Array.from(extraFieldsMap.values()).sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+
+  // Merge: current fields first, then old fields that still have answers
+  const fields = [...currentFields, ...extraFields]
 
   function getAnswerValue(response: any, fieldId: string): string {
     const answer = response.answers?.find(

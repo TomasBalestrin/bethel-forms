@@ -48,9 +48,33 @@ export async function POST(
       .order('order', { ascending: true })
 
     // Filter out non-question fields
-    const questionFields = (fields || []).filter(
+    const currentQuestionFields = (fields || []).filter(
       (f: any) => !['welcome', 'thanks', 'message'].includes(f.type)
     )
+
+    // Collect field info from response answers to include fields that were
+    // deleted/changed since the responses were collected
+    const currentFieldIds = new Set(currentQuestionFields.map((f: any) => f.id))
+    const extraFieldsMap = new Map<string, { id: string; title: string; type: string; order: number }>()
+
+    // We need field info from answers - re-fetch responses with field join
+    const { data: responsesWithFields } = await supabaseAdmin
+      .from('responses')
+      .select('response_answers(field_id, form_fields(id, title, type, order))')
+      .eq('form_id', params.id)
+      .eq('status', 'complete')
+
+    ;(responsesWithFields || []).forEach((r: any) => {
+      ;(r.response_answers || []).forEach((a: any) => {
+        if (a.form_fields && !currentFieldIds.has(a.form_fields.id) &&
+            !['welcome', 'thanks', 'message'].includes(a.form_fields.type)) {
+          extraFieldsMap.set(a.form_fields.id, a.form_fields)
+        }
+      })
+    })
+
+    const extraFields = Array.from(extraFieldsMap.values()).sort((a, b) => (a.order || 0) - (b.order || 0))
+    const questionFields = [...currentQuestionFields, ...extraFields]
 
     const csvHeaders = [
       'Data',
