@@ -27,7 +27,7 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
           <div className="text-center">
             <Hand className="mx-auto mb-4 text-purple-500" size={48} />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">{field.title || 'Bem-vindo!'}</h2>
-            <p className="text-gray-500 mb-6">{field.description || 'Preencha o formulário'}</p>
+            <p className="text-gray-500 mb-6 whitespace-pre-line text-left">{field.description || 'Preencha o formulário'}</p>
             <button
               className="px-8 py-3 rounded-lg text-white font-medium"
               style={{ backgroundColor: primaryColor }}
@@ -44,7 +44,7 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
               {field.title || 'Pergunta'}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </h2>
-            {field.description && <p className="text-gray-500 text-sm mb-4">{field.description}</p>}
+            {field.description && <p className="text-gray-500 text-sm mb-4 whitespace-pre-line">{field.description}</p>}
             <Input placeholder={field.placeholder || 'Digite sua resposta...'} disabled />
           </div>
         )}
@@ -56,7 +56,7 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
               {field.title || 'Seu email'}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </h2>
-            {field.description && <p className="text-gray-500 text-sm mb-4">{field.description}</p>}
+            {field.description && <p className="text-gray-500 text-sm mb-4 whitespace-pre-line">{field.description}</p>}
             <Input type="email" placeholder={field.placeholder || 'nome@email.com'} disabled />
           </div>
         )}
@@ -68,7 +68,7 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
               {field.title || 'Seu telefone'}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </h2>
-            {field.description && <p className="text-gray-500 text-sm mb-4">{field.description}</p>}
+            {field.description && <p className="text-gray-500 text-sm mb-4 whitespace-pre-line">{field.description}</p>}
             <Input type="tel" placeholder={field.placeholder || '(11) 99999-9999'} disabled />
           </div>
         )}
@@ -80,7 +80,7 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
               {field.title || 'Número'}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </h2>
-            {field.description && <p className="text-gray-500 text-sm mb-4">{field.description}</p>}
+            {field.description && <p className="text-gray-500 text-sm mb-4 whitespace-pre-line">{field.description}</p>}
             <Input type="number" placeholder={field.placeholder || 'Digite um número...'} disabled />
           </div>
         )}
@@ -92,7 +92,7 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
               {field.title || 'Escolha uma opção'}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </h2>
-            {field.description && <p className="text-gray-500 text-sm mb-4">{field.description}</p>}
+            {field.description && <p className="text-gray-500 text-sm mb-4 whitespace-pre-line">{field.description}</p>}
             <div className="space-y-2">
               {(settings.options || [{ id: '1', label: 'Opção 1' }, { id: '2', label: 'Opção 2' }]).map(
                 (option: any, i: number) => (
@@ -122,7 +122,7 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
               {field.title || 'Como você avalia?'}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </h2>
-            {field.description && <p className="text-gray-500 text-sm mb-4">{field.description}</p>}
+            {field.description && <p className="text-gray-500 text-sm mb-4 whitespace-pre-line">{field.description}</p>}
             <div className="flex gap-2 justify-center my-4">
               {Array.from(
                 { length: (settings.scaleMax ?? 10) - (settings.scaleMin ?? 0) + 1 },
@@ -148,7 +148,7 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
           <div className="text-center">
             <MessageSquare className="mx-auto mb-4 text-gray-400" size={36} />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">{field.title || 'Mensagem'}</h2>
-            {field.description && <p className="text-gray-500">{field.description}</p>}
+            {field.description && <p className="text-gray-500 whitespace-pre-line">{field.description}</p>}
           </div>
         )}
 
@@ -157,7 +157,7 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
           <div className="text-center">
             <Heart className="mx-auto mb-4 text-red-400" size={48} />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">{field.title || 'Obrigado!'}</h2>
-            {field.description && <p className="text-gray-500 mb-4">{field.description}</p>}
+            {field.description && <p className="text-gray-500 mb-4 whitespace-pre-line">{field.description}</p>}
             {settings.thanksType === 'redirect' && settings.buttonText && (
               <button
                 className="px-6 py-2 rounded-lg text-white font-medium"
