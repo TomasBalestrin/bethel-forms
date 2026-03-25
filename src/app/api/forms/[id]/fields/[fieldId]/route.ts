@@ -74,6 +74,19 @@ export async function DELETE(
       return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
     }
 
+    // First, delete all response_answers that reference this field
+    // (response_answers.field_id has no ON DELETE CASCADE, so we must delete manually)
+    const { error: answersError } = await supabaseAdmin
+      .from('response_answers')
+      .delete()
+      .eq('field_id', params.fieldId)
+
+    if (answersError) {
+      console.error('Error deleting field answers:', answersError)
+      return NextResponse.json({ error: 'Erro ao excluir respostas do campo' }, { status: 500 })
+    }
+
+    // Now delete the field itself
     const { error } = await supabaseAdmin
       .from('form_fields')
       .delete()

@@ -16,6 +16,7 @@ export default function FormSettingsPage() {
   const [form, setForm] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
@@ -33,18 +34,29 @@ export default function FormSettingsPage() {
   async function saveSettings() {
     setSaving(true)
     setSaved(false)
-    await fetch(`/api/forms/${formId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: form.name,
-        slug: form.slug,
-        settings: form.settings,
-      }),
-    })
+    setSaveError('')
+    try {
+      const res = await fetch(`/api/forms/${formId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          slug: form.slug,
+          settings: form.settings,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setSaveError(data.error || 'Erro ao salvar')
+        setSaving(false)
+        return
+      }
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setSaveError('Erro de conexão')
+    }
     setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
   }
 
   function updateSettings(path: string, value: any) {
@@ -76,6 +88,7 @@ export default function FormSettingsPage() {
         formName={form.name}
         formSlug={form.slug}
         formStatus={form.status}
+        saveError={saveError}
         rightActions={
           <button
             onClick={saveSettings}
@@ -83,7 +96,7 @@ export default function FormSettingsPage() {
             className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             <Save size={14} />
-            {saving ? 'Salvando...' : saved ? 'Salvo!' : 'Salvar'}
+            {saving ? 'Salvando...' : saved ? 'Salvo!' : saveError ? 'Tentar novamente' : 'Salvar'}
           </button>
         }
       />

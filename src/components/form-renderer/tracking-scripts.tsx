@@ -8,11 +8,26 @@ interface TrackingScriptsProps {
   gtmId?: string
 }
 
+// Sanitize IDs to prevent XSS injection via script interpolation
+function sanitizePixelId(id: string): string | null {
+  return /^\d{10,20}$/.test(id) ? id : null
+}
+function sanitizeGaId(id: string): string | null {
+  return /^G-[A-Za-z0-9]+$/.test(id) ? id : null
+}
+function sanitizeGtmId(id: string): string | null {
+  return /^GTM-[A-Za-z0-9]+$/.test(id) ? id : null
+}
+
 export function TrackingScripts({ pixelId, gaId, gtmId }: TrackingScriptsProps) {
+  const safePixelId = pixelId ? sanitizePixelId(pixelId) : null
+  const safeGaId = gaId ? sanitizeGaId(gaId) : null
+  const safeGtmId = gtmId ? sanitizeGtmId(gtmId) : null
+
   return (
     <>
       {/* Meta Pixel */}
-      {pixelId && (
+      {safePixelId && (
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
             !function(f,b,e,v,n,t,s)
@@ -23,17 +38,17 @@ export function TrackingScripts({ pixelId, gaId, gtmId }: TrackingScriptsProps) 
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${pixelId}');
+            fbq('init', '${safePixelId}');
             fbq('track', 'PageView');
           `}
         </Script>
       )}
 
       {/* Google Analytics */}
-      {gaId && (
+      {safeGaId && (
         <>
           <Script
-            src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+            src={`https://www.googletagmanager.com/gtag/js?id=${safeGaId}`}
             strategy="afterInteractive"
           />
           <Script id="google-analytics" strategy="afterInteractive">
@@ -41,21 +56,21 @@ export function TrackingScripts({ pixelId, gaId, gtmId }: TrackingScriptsProps) 
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              gtag('config', '${gaId}');
+              gtag('config', '${safeGaId}');
             `}
           </Script>
         </>
       )}
 
       {/* Google Tag Manager */}
-      {gtmId && (
+      {safeGtmId && (
         <Script id="gtm" strategy="afterInteractive">
           {`
             (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
             new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
             j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-            })(window,document,'script','dataLayer','${gtmId}');
+            })(window,document,'script','dataLayer','${safeGtmId}');
           `}
         </Script>
       )}

@@ -267,6 +267,13 @@ CREATE POLICY IF NOT EXISTS "Form owners can read answers"
     OR current_setting('role') = 'service_role'
   );
 
+-- Fix: response_answers.field_id needs ON DELETE SET NULL to allow field deletion
+-- Run this if response_answers already has data:
+-- ALTER TABLE response_answers DROP CONSTRAINT IF EXISTS response_answers_field_id_fkey;
+-- ALTER TABLE response_answers ALTER COLUMN field_id DROP NOT NULL;
+-- ALTER TABLE response_answers ADD CONSTRAINT response_answers_field_id_fkey
+--   FOREIGN KEY (field_id) REFERENCES form_fields(id) ON DELETE SET NULL;
+
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_forms_user_id ON forms(user_id);
 CREATE INDEX IF NOT EXISTS idx_forms_slug ON forms(slug);
