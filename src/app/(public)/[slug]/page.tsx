@@ -298,7 +298,7 @@ function PublicFormContent() {
                 <div className="text-center">
                   <h1 className="text-3xl font-bold mb-3">{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-lg text-gray-500 mb-8">{currentField.description}</p>
+                    <p className="text-lg text-gray-500 mb-8 whitespace-pre-line text-left">{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
@@ -316,7 +316,7 @@ function PublicFormContent() {
                   <div className="text-5xl mb-4">🎉</div>
                   <h1 className="text-3xl font-bold mb-3">{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-lg text-gray-500 mb-6">{currentField.description}</p>
+                    <p className="text-lg text-gray-500 mb-6 whitespace-pre-line text-left">{currentField.description}</p>
                   )}
                   {currentField.settings?.thanksType === 'redirect' && currentField.settings?.redirectUrl && /^https?:\/\//.test(currentField.settings.redirectUrl) && (
                     <a
@@ -336,7 +336,7 @@ function PublicFormContent() {
                 <div className="text-center">
                   <h2 className="text-2xl font-bold mb-3">{currentField.title}</h2>
                   {currentField.description && (
-                    <p className="text-gray-500 mb-6">{currentField.description}</p>
+                    <p className="text-gray-500 mb-6 whitespace-pre-line">{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
@@ -356,7 +356,7 @@ function PublicFormContent() {
                     {currentField.required && <span className="text-red-500 ml-1">*</span>}
                   </h2>
                   {currentField.description && (
-                    <p className="text-gray-500 mb-6">{currentField.description}</p>
+                    <p className="text-gray-500 mb-6 whitespace-pre-line">{currentField.description}</p>
                   )}
 
                   <FormFieldInput
