@@ -105,20 +105,21 @@ export function FormTopBar({
             <Share2 size={14} />
           </button>
         )}
-        {formStatus === 'published' ? (
+        {formStatus === 'published' && (
           <span className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-md">
             <Check size={12} />
             Publicado
           </span>
-        ) : onPublish ? (
+        )}
+        {onPublish && (
           <button
             onClick={onPublish}
-            disabled={publishing}
+            disabled={publishing || saving}
             className="px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            {publishing ? 'Publicando...' : 'Publicar'}
+            {publishing ? 'Publicando...' : saving ? 'Salvando...' : 'Publicar'}
           </button>
-        ) : null}
+        )}
       </div>
     </div>
   )
