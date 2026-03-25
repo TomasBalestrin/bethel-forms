@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
 import { generateSlug } from '@/lib/utils'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const user = await getAuthenticatedUser()
