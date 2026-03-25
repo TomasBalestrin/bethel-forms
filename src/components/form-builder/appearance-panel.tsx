@@ -70,6 +70,41 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
       </div>
 
       <div className="space-y-1.5">
+        <Label>Cor da descrição</Label>
+        <div className="flex gap-2">
+          <input
+            type="color"
+            value={appearance.descriptionColor || '#6b7280'}
+            onChange={(e) => updateAppearance('descriptionColor', e.target.value)}
+            className="w-10 h-10 rounded cursor-pointer border border-gray-300"
+          />
+          <Input
+            value={appearance.descriptionColor || '#6b7280'}
+            onChange={(e) => updateAppearance('descriptionColor', e.target.value)}
+            className="flex-1"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Cor das opções</Label>
+        <p className="text-[10px] text-gray-400">Texto e borda das opções de múltipla escolha.</p>
+        <div className="flex gap-2">
+          <input
+            type="color"
+            value={appearance.optionColor || '#d1d5db'}
+            onChange={(e) => updateAppearance('optionColor', e.target.value)}
+            className="w-10 h-10 rounded cursor-pointer border border-gray-300"
+          />
+          <Input
+            value={appearance.optionColor || '#d1d5db'}
+            onChange={(e) => updateAppearance('optionColor', e.target.value)}
+            className="flex-1"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
         <Label>Cor de fundo</Label>
         <div className="flex gap-2">
           <input

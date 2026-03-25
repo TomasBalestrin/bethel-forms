@@ -90,7 +90,9 @@ function PublicFormContent() {
     fontSize: appearance.titleFontSize ? `${appearance.titleFontSize}px` : undefined,
     fontWeight: appearance.titleFontWeight || undefined,
   }
+  const descriptionColor = appearance.descriptionColor || '#6b7280'
   const descStyle: React.CSSProperties = {
+    color: descriptionColor,
     fontSize: appearance.descriptionFontSize ? `${appearance.descriptionFontSize}px` : undefined,
     fontWeight: appearance.descriptionFontWeight || undefined,
   }
@@ -313,7 +315,7 @@ function PublicFormContent() {
                 <div className="text-center">
                   <h1 className="text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-lg mb-8 whitespace-pre-line text-left opacity-70" style={{ color: textColor, ...descStyle }}>{currentField.description}</p>
+                    <p className="text-lg mb-8 whitespace-pre-line text-left " style={descStyle}>{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
@@ -331,7 +333,7 @@ function PublicFormContent() {
                   <div className="text-5xl mb-4">🎉</div>
                   <h1 className="text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-lg mb-6 whitespace-pre-line text-left opacity-70" style={{ color: textColor, ...descStyle }}>{currentField.description}</p>
+                    <p className="text-lg mb-6 whitespace-pre-line text-left " style={descStyle}>{currentField.description}</p>
                   )}
                   {currentField.settings?.thanksType === 'redirect' && currentField.settings?.redirectUrl && /^https?:\/\//.test(currentField.settings.redirectUrl) && (
                     <a
@@ -351,7 +353,7 @@ function PublicFormContent() {
                 <div className="text-center">
                   <h2 className="text-2xl font-bold mb-3" style={titleStyle}>{currentField.title}</h2>
                   {currentField.description && (
-                    <p className="mb-6 whitespace-pre-line opacity-70" style={{ color: textColor, ...descStyle }}>{currentField.description}</p>
+                    <p className="mb-6 whitespace-pre-line " style={descStyle}>{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
@@ -371,7 +373,7 @@ function PublicFormContent() {
                     {currentField.required && <span className="text-red-500 ml-1">*</span>}
                   </h2>
                   {currentField.description && (
-                    <p className="mb-6 whitespace-pre-line opacity-70" style={{ color: textColor, ...descStyle }}>{currentField.description}</p>
+                    <p className="mb-6 whitespace-pre-line " style={descStyle}>{currentField.description}</p>
                   )}
 
                   <FormFieldInput
@@ -384,6 +386,7 @@ function PublicFormContent() {
                     onSubmit={goNext}
                     primaryColor={primaryColor}
                     error={fieldError}
+                    appearance={appearance}
                   />
 
                   <div className="mt-8 flex items-center gap-3">
