@@ -20,32 +20,25 @@ export async function GET(
     }
 
     const settings = form.settings as any
-    const publishedVersion = form.published_version as any
 
-    // Use published version if available, otherwise load draft fields for preview
-    let fields: any[] = []
-    if (publishedVersion?.fields) {
-      fields = publishedVersion.fields
-    } else {
-      // Load draft fields directly from database (preview mode)
-      const { data: draftFields } = await supabaseAdmin
-        .from('form_fields')
-        .select('*')
-        .eq('form_id', form.id)
-        .order('order', { ascending: true })
+    // Always load current fields from the database (source of truth)
+    const { data: dbFields } = await supabaseAdmin
+      .from('form_fields')
+      .select('*')
+      .eq('form_id', form.id)
+      .order('order', { ascending: true })
 
-      fields = (draftFields || []).map((f: any) => ({
-        id: f.id,
-        type: f.type,
-        title: f.title,
-        description: f.description,
-        placeholder: f.placeholder,
-        required: f.required,
-        settings: f.settings || {},
-        media: f.media,
-        conversionEvent: f.conversion_event,
-      }))
-    }
+    const fields = (dbFields || []).map((f: any) => ({
+      id: f.id,
+      type: f.type,
+      title: f.title,
+      description: f.description,
+      placeholder: f.placeholder,
+      required: f.required,
+      settings: f.settings || {},
+      media: f.media,
+      conversionEvent: f.conversion_event,
+    }))
 
     return NextResponse.json({
       id: form.id,

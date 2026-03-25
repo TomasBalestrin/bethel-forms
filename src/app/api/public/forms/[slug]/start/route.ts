@@ -11,7 +11,6 @@ export async function POST(
       .from('forms')
       .select('*')
       .eq('slug', params.slug)
-      .eq('status', 'published')
       .single()
 
     if (error || !form) {
@@ -22,7 +21,7 @@ export async function POST(
     }
 
     const settings = form.settings as any
-    if (form.status === 'blocked') {
+    if (form.status === 'blocked' || form.status === 'archived') {
       return NextResponse.json(
         { error: settings?.blockedMessage || 'Este formulário não está aceitando respostas.' },
         { status: 403 }

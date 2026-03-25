@@ -108,9 +108,29 @@ export default function ResponsesPage() {
     }
   }
 
-  const fields = form?.fields?.filter(
+  // Build field list: current fields + any fields from answers that no longer exist
+  const currentFields = (form?.fields?.filter(
     (f: any) => !['welcome', 'thanks', 'message'].includes(f.type)
-  ) || []
+  ) || []) as any[]
+
+  // Extract unique fields from all response answers (handles deleted fields)
+  const answerFieldMap = new Map<string, { id: string; title: string; type: string; order: number }>()
+  for (const response of responses) {
+    for (const answer of (response.answers || [])) {
+      if (answer.field && !answerFieldMap.has(answer.field.id)) {
+        answerFieldMap.set(answer.field.id, answer.field)
+      }
+    }
+  }
+
+  // Merge: current fields first, then any answer-only fields not in current
+  const currentFieldIds = new Set(currentFields.map((f: any) => f.id))
+  const extraFields = Array.from(answerFieldMap.values())
+    .filter((f) => !currentFieldIds.has(f.id))
+    .filter((f) => !['welcome', 'thanks', 'message'].includes(f.type))
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+  const fields = [...currentFields, ...extraFields]
 
   function getAnswerValue(response: any, fieldId: string): string {
     const answer = response.answers?.find(

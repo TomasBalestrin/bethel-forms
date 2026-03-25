@@ -10,7 +10,6 @@ export async function POST(
       .from('forms')
       .select('id')
       .eq('slug', params.slug)
-      .eq('status', 'published')
       .single()
 
     if (!form) {
