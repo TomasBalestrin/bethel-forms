@@ -388,7 +388,7 @@ export default function FormEditorPage() {
           >
             <FieldPreview
               field={selectedField}
-              primaryColor={form.settings?.appearance?.primaryColor}
+              appearance={form.settings?.appearance}
             />
           </div>
         </div>
