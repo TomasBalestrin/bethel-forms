@@ -3,12 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { Sidebar } from '@/components/dashboard/sidebar'
-import { Button } from '@/components/ui/button'
+import { FormTopBar } from '@/components/dashboard/form-top-bar'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Save, Copy, ExternalLink } from 'lucide-react'
+import { Save } from 'lucide-react'
 
 export default function FormSettingsPage() {
   const params = useParams()
@@ -18,6 +15,7 @@ export default function FormSettingsPage() {
 
   const [form, setForm] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
@@ -34,6 +32,7 @@ export default function FormSettingsPage() {
 
   async function saveSettings() {
     setSaving(true)
+    setSaved(false)
     await fetch(`/api/forms/${formId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -44,6 +43,8 @@ export default function FormSettingsPage() {
       }),
     })
     setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   function updateSettings(path: string, value: any) {
@@ -60,95 +61,174 @@ export default function FormSettingsPage() {
 
   if (!form) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
       </div>
     )
   }
 
-  const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${form.slug}`
+  const appearance = form.settings?.appearance || {}
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="ml-64 p-8 max-w-3xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.push(`/form/${formId}/edit`)} className="p-1.5 rounded hover:bg-gray-100">
-              <ArrowLeft size={18} />
-            </button>
-            <h1 className="text-xl font-bold text-gray-900">Configurações</h1>
+    <div className="min-h-screen flex flex-col bg-gray-50/50">
+      <FormTopBar
+        formId={formId}
+        formName={form.name}
+        formSlug={form.slug}
+        formStatus={form.status}
+        rightActions={
+          <button
+            onClick={saveSettings}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            <Save size={14} />
+            {saving ? 'Salvando...' : saved ? 'Salvo!' : 'Salvar'}
+          </button>
+        }
+      />
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-6 py-10">
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-gray-900 mb-8">Configurações</h1>
+
+          {/* Form Title */}
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Título do formulário:
+            </label>
+            <div className="relative">
+              <Input
+                value={form.name}
+                onChange={(e) => {
+                  if (e.target.value.length <= 60) {
+                    setForm({ ...form, name: e.target.value })
+                  }
+                }}
+                className="pr-16"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                {form.name?.length || 0}/60
+              </span>
+            </div>
           </div>
-          <Button onClick={saveSettings} disabled={saving}>
-            <Save size={14} className="mr-1" />
-            {saving ? 'Salvando...' : 'Salvar'}
-          </Button>
-        </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle>Geral</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Nome do formulário</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Slug</Label>
-                <Input
-                  value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Link público</Label>
-                <div className="flex gap-2">
-                  <Input value={publicUrl} readOnly className="bg-gray-50" />
-                  <Button variant="outline" onClick={() => navigator.clipboard.writeText(publicUrl)}>
-                    <Copy size={14} />
-                  </Button>
-                  <Button variant="outline" onClick={() => window.open(publicUrl, '_blank')}>
-                    <ExternalLink size={14} />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Slug */}
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Slug (URL personalizada):
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400 whitespace-nowrap">
+                {typeof window !== 'undefined' ? window.location.origin : ''}/
+              </span>
+              <Input
+                value={form.slug}
+                onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                className="flex-1"
+              />
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader><CardTitle>Rastreamento</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Meta Pixel ID</Label>
+          <hr className="border-gray-200 mb-8" />
+
+          {/* Personalizar estilo */}
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Personalizar estilo</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Adicione o seu logotipo e cores personalizadas.
+            </p>
+
+            <div className="space-y-5">
+              {/* Cor do botão */}
+              <ColorPickerRow
+                label="Cor do botão:"
+                value={appearance.primaryColor || '#2563eb'}
+                onChange={(val) => updateSettings('appearance.primaryColor', val)}
+              />
+
+              {/* Cor da pergunta / texto */}
+              <ColorPickerRow
+                label="Cor da pergunta:"
+                value={appearance.textColor || '#ffffff'}
+                onChange={(val) => updateSettings('appearance.textColor', val)}
+              />
+
+              {/* Cor da resposta */}
+              <ColorPickerRow
+                label="Cor da resposta:"
+                value={appearance.answerColor || '#ECEFF1'}
+                onChange={(val) => updateSettings('appearance.answerColor', val)}
+              />
+
+              {/* Cor de fundo */}
+              <ColorPickerRow
+                label="Cor de fundo:"
+                value={appearance.backgroundColor || '#000921'}
+                onChange={(val) => updateSettings('appearance.backgroundColor', val)}
+              />
+            </div>
+          </div>
+
+          {/* Barra de progresso */}
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Barra de progresso:
+            </label>
+            <select
+              value={appearance.progressBar || 'bar'}
+              onChange={(e) => updateSettings('appearance.progressBar', e.target.value)}
+              className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
+            >
+              <option value="bar">Barra horizontal</option>
+              <option value="steps">Indicador de passos</option>
+              <option value="hidden">Ocultar</option>
+            </select>
+          </div>
+
+          <hr className="border-gray-200 mb-8" />
+
+          {/* Rastreamento */}
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Rastreamento</h2>
+            <p className="text-sm text-gray-500 mb-6">Configure pixels e captura de UTMs.</p>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Meta Pixel ID:</label>
                 <Input
                   value={form.settings?.tracking?.pixelId || ''}
                   onChange={(e) => updateSettings('tracking.pixelId', e.target.value)}
                   placeholder="123456789012345"
                 />
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 mt-1">
                   Eventos: PageView, StartForm, SubmitAnswer, EndForm, FormFlowConversion
                 </p>
               </div>
-              <div className="space-y-1.5">
-                <Label>Google Analytics (GA4)</Label>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Google Analytics (GA4):</label>
                 <Input
                   value={form.settings?.tracking?.gaId || ''}
                   onChange={(e) => updateSettings('tracking.gaId', e.target.value)}
                   placeholder="G-XXXXXXXXXX"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label>Google Tag Manager</Label>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Google Tag Manager:</label>
                 <Input
                   value={form.settings?.tracking?.gtmId || ''}
                   onChange={(e) => updateSettings('tracking.gtmId', e.target.value)}
                   placeholder="GTM-XXXXXXX"
                 />
               </div>
-              <div className="flex items-center justify-between">
+
+              <div className="flex items-center justify-between py-2">
                 <div>
-                  <Label>Captura de UTMs</Label>
-                  <p className="text-xs text-gray-400">Captura utm_source, utm_medium, etc.</p>
+                  <p className="text-sm font-medium text-gray-700">Captura de UTMs</p>
+                  <p className="text-xs text-gray-400">Captura utm_source, utm_medium, utm_campaign, etc.</p>
                 </div>
                 <button
                   onClick={() => updateSettings('tracking.utmEnabled', !form.settings?.tracking?.utmEnabled)}
@@ -156,69 +236,107 @@ export default function FormSettingsPage() {
                     form.settings?.tracking?.utmEnabled ? 'bg-blue-600' : 'bg-gray-300'
                   }`}
                 >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${
                     form.settings?.tracking?.utmEnabled ? 'translate-x-5' : ''
                   }`} />
                 </button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader><CardTitle>SEO e Compartilhamento</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Título (og:title)</Label>
+          <hr className="border-gray-200 mb-8" />
+
+          {/* SEO */}
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">SEO e Compartilhamento</h2>
+            <p className="text-sm text-gray-500 mb-6">Meta tags para redes sociais.</p>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Título (og:title):</label>
                 <Input
                   value={form.settings?.seo?.ogTitle || ''}
                   onChange={(e) => updateSettings('seo.ogTitle', e.target.value)}
                   placeholder={form.name}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label>Descrição (og:description)</Label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Descrição (og:description):</label>
                 <Input
                   value={form.settings?.seo?.ogDescription || ''}
                   onChange={(e) => updateSettings('seo.ogDescription', e.target.value)}
                   placeholder="Descrição do formulário"
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader><CardTitle>Notificações</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Email para o dono</Label>
+          <hr className="border-gray-200 mb-8" />
+
+          {/* Notificações */}
+          <div className="mb-12">
+            <h2 className="text-lg font-bold text-gray-900 mb-1">Notificações</h2>
+            <p className="text-sm text-gray-500 mb-6">Configure alertas por email.</p>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-2">
+                <p className="text-sm font-medium text-gray-700">Email para o dono do formulário</p>
                 <button
                   onClick={() => updateSettings('notifications.ownerEmail', !form.settings?.notifications?.ownerEmail)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
                     form.settings?.notifications?.ownerEmail ? 'bg-blue-600' : 'bg-gray-300'
                   }`}
                 >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${
                     form.settings?.notifications?.ownerEmail ? 'translate-x-5' : ''
                   }`} />
                 </button>
               </div>
-              <div className="flex items-center justify-between">
-                <Label>Cópia para respondente</Label>
+              <div className="flex items-center justify-between py-2">
+                <p className="text-sm font-medium text-gray-700">Cópia para respondente</p>
                 <button
                   onClick={() => updateSettings('notifications.respondentCopy', !form.settings?.notifications?.respondentCopy)}
                   className={`relative w-11 h-6 rounded-full transition-colors ${
                     form.settings?.notifications?.respondentCopy ? 'bg-blue-600' : 'bg-gray-300'
                   }`}
                 >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${
                     form.settings?.notifications?.respondentCopy ? 'translate-x-5' : ''
                   }`} />
                 </button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
-      </main>
+      </div>
+    </div>
+  )
+}
+
+function ColorPickerRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (val: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-4">
+      <span className="text-sm text-gray-700 w-36 flex-shrink-0">{label}</span>
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-10 h-10 rounded-full cursor-pointer border-2 border-gray-200 p-0.5"
+        style={{ backgroundColor: value }}
+      />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-32"
+      />
     </div>
   )
 }

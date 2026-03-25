@@ -6,39 +6,37 @@ import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { FormTopBar } from '@/components/dashboard/form-top-bar'
 import { FieldTypeSelector } from '@/components/form-builder/field-type-selector'
 import { FieldSettingsPanel } from '@/components/form-builder/field-settings-panel'
 import { FieldPreview } from '@/components/form-builder/field-preview'
 import { AppearancePanel } from '@/components/form-builder/appearance-panel'
 import {
-  ArrowLeft,
   Plus,
-  Eye,
   Save,
-  Send,
-  GripVertical,
   Trash2,
   Palette,
   Settings,
-  Type,
-  Mail,
-  Phone,
-  ListChecks,
-  Star,
-  MessageSquare,
-  Hand,
-  Heart,
+  Copy,
+  Settings2,
+  Image,
 } from 'lucide-react'
 
-const FIELD_ICONS: Record<string, any> = {
-  welcome: Hand,
-  short_text: Type,
-  email: Mail,
-  phone: Phone,
-  multiple_choice: ListChecks,
-  satisfaction_scale: Star,
-  message: MessageSquare,
-  thanks: Heart,
+const FIELD_TYPE_LABELS: Record<string, { label: string; color: string }> = {
+  welcome: { label: 'Boas-vindas', color: 'bg-emerald-100 text-emerald-700' },
+  short_text: { label: 'Resposta curta', color: 'bg-blue-100 text-blue-700' },
+  email: { label: 'Email', color: 'bg-green-100 text-green-700' },
+  phone: { label: 'Telefone', color: 'bg-orange-100 text-orange-700' },
+  number: { label: 'Numero', color: 'bg-teal-100 text-teal-700' },
+  multiple_choice: { label: 'Multipla escolha', color: 'bg-indigo-100 text-indigo-700' },
+  satisfaction_scale: { label: 'Escala NPS', color: 'bg-yellow-100 text-yellow-700' },
+  message: { label: 'Mensagem', color: 'bg-purple-100 text-purple-700' },
+  thanks: { label: 'Agradecimento', color: 'bg-red-100 text-red-700' },
+  long_text: { label: 'Resposta longa', color: 'bg-cyan-100 text-cyan-700' },
+  checkbox: { label: 'Checkbox', color: 'bg-violet-100 text-violet-700' },
+  dropdown: { label: 'Dropdown', color: 'bg-rose-100 text-rose-700' },
+  date: { label: 'Data', color: 'bg-amber-100 text-amber-700' },
+  url: { label: 'URL', color: 'bg-sky-100 text-sky-700' },
 }
 
 export default function FormEditorPage() {
@@ -68,7 +66,6 @@ export default function FormEditorPage() {
     if (authStatus === 'authenticated') fetchForm()
   }, [formId, authStatus])
 
-  // Cleanup autosave timer on unmount
   useEffect(() => {
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
@@ -91,7 +88,6 @@ export default function FormEditorPage() {
     }
   }
 
-  // Debounced autosave
   const scheduleAutoSave = useCallback(() => {
     setHasChanges(true)
     setSaveError('')
@@ -108,7 +104,6 @@ export default function FormEditorPage() {
     setSaveError('')
 
     try {
-      // 1. Save form settings
       const formRes = await fetch(`/api/forms/${formId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -125,7 +120,6 @@ export default function FormEditorPage() {
         return false
       }
 
-      // 2. Save fields - create new ones first, then update existing
       const updatedFields = [...fields]
       for (let i = 0; i < updatedFields.length; i++) {
         const field = updatedFields[i]
@@ -133,14 +127,10 @@ export default function FormEditorPage() {
           const res = await fetch(`/api/forms/${formId}/fields`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...field,
-              order: i,
-            }),
+            body: JSON.stringify({ ...field, order: i }),
           })
           if (res.ok) {
             const saved = await res.json()
-            // Update the field with server-assigned ID
             if (selectedFieldId === field.id) {
               setSelectedFieldId(saved.id)
             }
@@ -154,10 +144,7 @@ export default function FormEditorPage() {
           await fetch(`/api/forms/${formId}/fields/${field.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...field,
-              order: i,
-            }),
+            body: JSON.stringify({ ...field, order: i }),
           })
         }
       }
@@ -179,7 +166,6 @@ export default function FormEditorPage() {
     setPublishing(true)
     setPublishError('')
 
-    // Save first to ensure all changes are persisted
     const saved = await saveForm()
     if (!saved) {
       setPublishing(false)
@@ -216,12 +202,7 @@ export default function FormEditorPage() {
       placeholder: '',
       settings:
         type === 'multiple_choice'
-          ? {
-              options: [
-                { id: '1', label: 'Opção 1', value: 'option_1' },
-                { id: '2', label: 'Opção 2', value: 'option_2' },
-              ],
-            }
+          ? { options: [{ id: '1', label: 'Opção 1', value: 'option_1' }, { id: '2', label: 'Opção 2', value: 'option_2' }] }
           : type === 'satisfaction_scale'
             ? { scaleMin: 0, scaleMax: 10 }
             : type === 'thanks'
@@ -230,7 +211,6 @@ export default function FormEditorPage() {
       conversionEvent: false,
     }
 
-    // Insert before the last "thanks" field if it exists
     const thanksIndex = fields.findIndex((f) => f.type === 'thanks')
     if (thanksIndex > -1 && type !== 'thanks') {
       const updated = [...fields]
@@ -253,8 +233,6 @@ export default function FormEditorPage() {
   async function deleteField(fieldId: string) {
     const field = fields.find((f) => f.id === fieldId)
     if (!field) return
-
-    // Don't allow deleting welcome or thanks
     if (field.type === 'welcome' || field.type === 'thanks') return
 
     if (!field._isNew) {
@@ -282,7 +260,7 @@ export default function FormEditorPage() {
 
   if (!form) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
       </div>
     )
@@ -291,99 +269,55 @@ export default function FormEditorPage() {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Top Bar */}
-      <div className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/dash')} className="p-1.5 rounded hover:bg-gray-100">
-            <ArrowLeft size={18} />
-          </button>
-          <Input
-            value={form.name}
-            onChange={(e) => {
-              setForm({ ...form, name: e.target.value })
-              scheduleAutoSave()
-            }}
-            className="border-none shadow-none text-base font-semibold w-64 focus:ring-0"
-          />
-          {form.status === 'published' && (
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Publicado</span>
-          )}
-          {form.status === 'draft' && (
-            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Rascunho</span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {saving && <span className="text-xs text-gray-400">Salvando...</span>}
-          {hasChanges && !saving && <span className="text-xs text-yellow-500">Alterações não salvas</span>}
-          {saveError && <span className="text-xs text-red-500">{saveError}</span>}
-          {publishError && <span className="text-xs text-red-500">{publishError}</span>}
-          <Button variant="outline" size="sm" onClick={saveForm} disabled={saving}>
-            <Save size={14} className="mr-1" />
-            Salvar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (form.slug) {
-                window.open(`/${form.slug}`, '_blank')
-              } else {
-                alert('Salve o formulário primeiro para visualizar.')
-              }
-            }}
-          >
-            <Eye size={14} className="mr-1" />
-            Preview
-          </Button>
-          <Button size="sm" onClick={publishForm} disabled={publishing || saving}>
-            <Send size={14} className="mr-1" />
-            {publishing ? 'Publicando...' : 'Publicar'}
-          </Button>
-        </div>
-      </div>
+      <FormTopBar
+        formId={formId}
+        formName={form.name}
+        formSlug={form.slug}
+        formStatus={form.status}
+        onPublish={publishForm}
+        publishing={publishing}
+        saving={saving}
+        hasChanges={hasChanges}
+        saveError={saveError || publishError}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Field List */}
         <div className="w-72 bg-white border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
-          <div className="p-3 border-b border-gray-200">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => setShowFieldSelector(true)}
-            >
-              <Plus size={14} className="mr-1" />
-              Adicionar campo
-            </Button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          <div className="flex-1 overflow-y-auto">
             {fields.map((field, index) => {
-              const Icon = FIELD_ICONS[field.type] || Type
+              const typeInfo = FIELD_TYPE_LABELS[field.type] || { label: field.type, color: 'bg-gray-100 text-gray-600' }
               const isProtected = field.type === 'welcome' || field.type === 'thanks'
+              const isSelected = selectedFieldId === field.id
+
               return (
                 <div
                   key={field.id}
                   onClick={() => setSelectedFieldId(field.id)}
                   className={cn(
-                    'flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer group text-sm',
-                    selectedFieldId === field.id
-                      ? 'bg-blue-50 border border-blue-200'
-                      : 'hover:bg-gray-50 border border-transparent'
+                    'flex items-start gap-3 px-4 py-3 cursor-pointer border-l-2 transition-colors group',
+                    isSelected
+                      ? 'bg-blue-50/60 border-l-blue-500'
+                      : 'border-l-transparent hover:bg-gray-50'
                   )}
                 >
-                  <GripVertical size={14} className="text-gray-300 flex-shrink-0 cursor-grab" />
-                  <Icon size={14} className="text-gray-400 flex-shrink-0" />
-                  <span className="flex-1 truncate text-gray-700">
-                    {field.title || `${field.type} (sem título)`}
+                  <span className="text-xs text-gray-400 font-medium mt-0.5 w-4 text-right flex-shrink-0">
+                    {index + 1}
                   </span>
-                  {!isProtected && (
-                    <div className="hidden group-hover:flex items-center gap-0.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-800 truncate leading-snug">
+                      {field.title || `${typeInfo.label} (sem título)`}
+                    </p>
+                    <span className={cn('inline-block text-[10px] font-medium px-1.5 py-0.5 rounded mt-1', typeInfo.color)}>
+                      {typeInfo.label}
+                    </span>
+                  </div>
+                  {isSelected && !isProtected && (
+                    <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deleteField(field.id)
-                        }}
+                        onClick={(e) => { e.stopPropagation(); deleteField(field.id) }}
                         className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
+                        title="Excluir"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -393,48 +327,74 @@ export default function FormEditorPage() {
               )
             })}
           </div>
+
+          {/* Add field button */}
+          <div className="p-3 border-t border-gray-100">
+            <button
+              onClick={() => setShowFieldSelector(true)}
+              className="flex items-center justify-center gap-2 w-full py-2 text-sm text-gray-500 rounded-lg border border-dashed border-gray-300 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50 transition-colors"
+            >
+              <Plus size={14} />
+              Adicionar campo
+            </button>
+          </div>
         </div>
 
         {/* Center - Preview */}
-        <div
-          className="flex-1 flex items-center justify-center overflow-y-auto"
-          style={{ backgroundColor: form.settings?.appearance?.backgroundColor || '#ffffff' }}
-        >
-          <FieldPreview
-            field={selectedField}
-            primaryColor={form.settings?.appearance?.primaryColor}
-          />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Field type indicator + actions */}
+          {selectedField && (
+            <div className="flex items-center justify-between px-6 py-2 bg-white border-b border-gray-100">
+              <div>
+                <span className={cn(
+                  'inline-flex items-center text-xs font-medium px-3 py-1 rounded-full',
+                  FIELD_TYPE_LABELS[selectedField.type]?.color || 'bg-gray-100 text-gray-600'
+                )}>
+                  {FIELD_TYPE_LABELS[selectedField.type]?.label || selectedField.type}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setRightPanel('settings')}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors',
+                    rightPanel === 'settings'
+                      ? 'border-blue-200 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  )}
+                >
+                  <Settings2 size={12} />
+                  Opções
+                </button>
+                <button
+                  onClick={() => setRightPanel('appearance')}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors',
+                    rightPanel === 'appearance'
+                      ? 'border-blue-200 bg-blue-50 text-blue-600'
+                      : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  )}
+                >
+                  <Palette size={12} />
+                  Design
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div
+            className="flex-1 flex items-center justify-center overflow-y-auto"
+            style={{ backgroundColor: form.settings?.appearance?.backgroundColor || '#ffffff' }}
+          >
+            <FieldPreview
+              field={selectedField}
+              primaryColor={form.settings?.appearance?.primaryColor}
+            />
+          </div>
         </div>
 
         {/* Right Panel */}
         <div className="w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
-          <div className="flex border-b border-gray-200">
-            <button
-              onClick={() => setRightPanel('settings')}
-              className={cn(
-                'flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5',
-                rightPanel === 'settings'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <Settings size={14} />
-              Campo
-            </button>
-            <button
-              onClick={() => setRightPanel('appearance')}
-              className={cn(
-                'flex-1 px-4 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5',
-                rightPanel === 'appearance'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <Palette size={14} />
-              Design
-            </button>
-          </div>
-
           <div className="flex-1 overflow-y-auto">
             {rightPanel === 'settings' ? (
               <FieldSettingsPanel

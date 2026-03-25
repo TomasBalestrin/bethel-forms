@@ -1,15 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Sidebar } from '@/components/dashboard/sidebar'
-import { Header } from '@/components/dashboard/header'
-import { FormCard } from '@/components/dashboard/form-card'
-import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Search, FileText, BarChart3, Inbox } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Plus, Search, FileText, LogOut } from 'lucide-react'
 
 interface FormItem {
   id: string
@@ -72,20 +69,8 @@ export default function DashboardPage() {
     }
   }
 
-  async function duplicateForm(id: string) {
-    try {
-      const res = await fetch(`/api/forms/${id}/duplicate`, { method: 'POST' })
-      if (res.ok) {
-        fetchForms()
-      }
-    } catch (error) {
-      console.error('Error duplicating form:', error)
-    }
-  }
-
   async function deleteForm(id: string) {
     if (!confirm('Tem certeza que deseja excluir este formulário?')) return
-
     try {
       const res = await fetch(`/api/forms/${id}`, { method: 'DELETE' })
       if (res.ok) {
@@ -100,114 +85,130 @@ export default function DashboardPage() {
     f.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  const totalResponses = forms.reduce(
-    (sum, f) => sum + (f._count?.responses || 0),
-    0
-  )
-
-  const activeForms = forms.filter((f) => f.status === 'published').length
-
   if (authStatus === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <main className="ml-64 p-8">
-        <Header title="Dashboard" />
-
-        {/* Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card>
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <FileText className="text-blue-600" size={24} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{activeForms}</p>
-                <p className="text-sm text-gray-500">Formulários ativos</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <BarChart3 className="text-green-600" size={24} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalResponses}</p>
-                <p className="text-sm text-gray-500">Respostas no mês</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-5 flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Inbox className="text-purple-600" size={24} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{forms.length}</p>
-                <p className="text-sm text-gray-500">Total de formulários</p>
-              </div>
-            </CardContent>
-          </Card>
+    <div className="min-h-screen bg-gray-50/50">
+      {/* Top Bar */}
+      <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <Link href="/dash" className="text-lg font-bold text-gray-900">
+            Bethel<span className="text-blue-600">Forms</span>
+          </Link>
+          {session?.user?.name && (
+            <span className="text-xs text-gray-400 hidden sm:inline">
+              {session.user.name}
+            </span>
+          )}
         </div>
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          <LogOut size={16} />
+          <span className="hidden sm:inline">Sair</span>
+        </button>
+      </header>
 
-        {/* Actions */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="relative w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+      {/* Content */}
+      <main className="max-w-4xl mx-auto px-4 py-10">
+        {/* Search + Create */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <Input
-              placeholder="Buscar formulários..."
+              placeholder="Pesquisar formulário"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className="pl-11 h-11 bg-white border-gray-200 rounded-lg text-sm"
             />
           </div>
-          <Button onClick={createForm} disabled={creating}>
-            <Plus size={18} className="mr-2" />
-            {creating ? 'Criando...' : 'Novo Formulário'}
-          </Button>
+          <button
+            onClick={createForm}
+            disabled={creating}
+            className="flex items-center gap-2 px-4 h-11 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            <Plus size={16} />
+            {creating ? 'Criando...' : 'Criar novo'}
+          </button>
         </div>
 
-        {/* Forms Grid */}
+        {/* Forms List */}
         {loading ? (
-          <div className="flex justify-center py-12">
+          <div className="flex justify-center py-20">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
           </div>
         ) : filteredForms.length === 0 ? (
-          <div className="text-center py-16">
+          <div className="text-center py-20">
             <FileText className="mx-auto text-gray-300 mb-4" size={48} />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               {search ? 'Nenhum formulário encontrado' : 'Crie seu primeiro formulário'}
             </h3>
-            <p className="text-gray-500 mb-6">
+            <p className="text-gray-500 mb-6 text-sm">
               {search
                 ? 'Tente buscar com outros termos'
                 : 'Comece criando um formulário para capturar leads'}
             </p>
             {!search && (
-              <Button onClick={createForm}>
-                <Plus size={18} className="mr-2" />
-                Novo Formulário
-              </Button>
+              <button
+                onClick={createForm}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus size={16} />
+                Criar novo
+              </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredForms.map((form) => (
-              <FormCard
-                key={form.id}
-                form={form}
-                onDuplicate={duplicateForm}
-                onDelete={deleteForm}
-              />
-            ))}
+          <div className="space-y-3">
+            {filteredForms.map((form) => {
+              const responseCount = form._count?.responses || 0
+              return (
+                <Link
+                  key={form.id}
+                  href={`/form/${form.id}/edit`}
+                  className="flex items-center gap-5 p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all group"
+                >
+                  {/* Thumbnail */}
+                  <div className="w-28 h-20 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                    <div className="text-center px-2">
+                      <div className="w-8 h-0.5 bg-blue-400/60 rounded mb-1.5 mx-auto" />
+                      <div className="w-16 h-0.5 bg-white/30 rounded mb-1" />
+                      <div className="w-14 h-0.5 bg-white/20 rounded mb-1" />
+                      <div className="w-12 h-0.5 bg-white/15 rounded mb-2" />
+                      <div className="w-10 h-2 bg-blue-500/40 rounded mx-auto" />
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors">
+                      {form.name}
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {responseCount > 0
+                        ? `${responseCount} ${responseCount === 1 ? 'resposta' : 'respostas'}`
+                        : 'Nenhuma resposta'}
+                    </p>
+                  </div>
+
+                  {/* Status */}
+                  <div className="flex-shrink-0">
+                    {form.status === 'published' ? (
+                      <Badge variant="success">Publicado</Badge>
+                    ) : (
+                      <Badge variant="secondary">Rascunho</Badge>
+                    )}
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
       </main>
