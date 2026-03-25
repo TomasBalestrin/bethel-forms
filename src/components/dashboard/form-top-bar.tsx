@@ -20,7 +20,6 @@ interface FormTopBarProps {
 
 const tabs = [
   { label: 'Editor', path: 'edit' },
-  { label: 'Opções', path: 'settings' },
   { label: 'Respostas', path: 'responses' },
 ]
 
