@@ -83,6 +83,21 @@ function PublicFormContent() {
   const currentField = fields[currentIndex]
   const appearance = formData?.appearance || {}
   const primaryColor = appearance.primaryColor || '#2563eb'
+  const textColor = appearance.textColor || '#111827'
+
+  const titleStyle: React.CSSProperties = {
+    color: textColor,
+    fontSize: appearance.titleFontSize ? `${appearance.titleFontSize}px` : undefined,
+    fontWeight: appearance.titleFontWeight || undefined,
+  }
+  const descStyle: React.CSSProperties = {
+    fontSize: appearance.descriptionFontSize ? `${appearance.descriptionFontSize}px` : undefined,
+    fontWeight: appearance.descriptionFontWeight || undefined,
+  }
+  const answerStyle: React.CSSProperties = {
+    fontSize: appearance.answerFontSize ? `${appearance.answerFontSize}px` : undefined,
+    fontWeight: appearance.answerFontWeight || undefined,
+  }
   const totalInputFields = fields.filter(
     (f: any) => !['welcome', 'thanks', 'message'].includes(f.type)
   ).length
@@ -296,9 +311,9 @@ function PublicFormContent() {
               {/* Welcome */}
               {currentField.type === 'welcome' && (
                 <div className="text-center">
-                  <h1 className="text-3xl font-bold mb-3">{currentField.title}</h1>
+                  <h1 className="text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-lg text-gray-500 mb-8 whitespace-pre-line text-left">{currentField.description}</p>
+                    <p className="text-lg mb-8 whitespace-pre-line text-left opacity-70" style={{ color: textColor, ...descStyle }}>{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
@@ -314,9 +329,9 @@ function PublicFormContent() {
               {currentField.type === 'thanks' && (
                 <div className="text-center">
                   <div className="text-5xl mb-4">🎉</div>
-                  <h1 className="text-3xl font-bold mb-3">{currentField.title}</h1>
+                  <h1 className="text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-lg text-gray-500 mb-6 whitespace-pre-line text-left">{currentField.description}</p>
+                    <p className="text-lg mb-6 whitespace-pre-line text-left opacity-70" style={{ color: textColor, ...descStyle }}>{currentField.description}</p>
                   )}
                   {currentField.settings?.thanksType === 'redirect' && currentField.settings?.redirectUrl && /^https?:\/\//.test(currentField.settings.redirectUrl) && (
                     <a
@@ -334,9 +349,9 @@ function PublicFormContent() {
               {/* Message */}
               {currentField.type === 'message' && (
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold mb-3">{currentField.title}</h2>
+                  <h2 className="text-2xl font-bold mb-3" style={titleStyle}>{currentField.title}</h2>
                   {currentField.description && (
-                    <p className="text-gray-500 mb-6 whitespace-pre-line">{currentField.description}</p>
+                    <p className="mb-6 whitespace-pre-line opacity-70" style={{ color: textColor, ...descStyle }}>{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
@@ -351,12 +366,12 @@ function PublicFormContent() {
               {/* Input fields */}
               {!['welcome', 'thanks', 'message'].includes(currentField.type) && (
                 <div>
-                  <h2 className="text-2xl font-semibold mb-1">
+                  <h2 className="text-2xl font-semibold mb-1" style={titleStyle}>
                     {currentField.title}
                     {currentField.required && <span className="text-red-500 ml-1">*</span>}
                   </h2>
                   {currentField.description && (
-                    <p className="text-gray-500 mb-6 whitespace-pre-line">{currentField.description}</p>
+                    <p className="mb-6 whitespace-pre-line opacity-70" style={{ color: textColor, ...descStyle }}>{currentField.description}</p>
                   )}
 
                   <FormFieldInput
