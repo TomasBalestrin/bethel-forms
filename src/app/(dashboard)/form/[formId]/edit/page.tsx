@@ -131,35 +131,49 @@ export default function FormEditorPage() {
         return false
       }
 
-      // 2. Save fields - track new field ID mappings
+      // 2. Save fields — new fields sequentially (need server ID), existing in parallel
       const idMapping: Record<string, any> = {}
+      const latestFields = fieldsRef.current
+      const newFields: { field: any; order: number }[] = []
+      const existingFields: { field: any; order: number }[] = []
 
       for (let i = 0; i < currentFields.length; i++) {
         const field = currentFields[i]
-        // Re-check: if this field was deleted while we were saving, skip it
-        if (!fieldsRef.current.find((f: any) => f.id === field.id)) continue
-
+        if (!latestFields.find((f: any) => f.id === field.id)) continue
         if (field._isNew) {
-          const res = await fetch(`/api/forms/${formId}/fields`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...field, order: i }),
-          })
-          if (res.ok) {
-            const saved = await res.json()
-            idMapping[field.id] = saved
-          } else {
-            const err = await res.json().catch(() => ({}))
-            setSaveError(err.error || 'Erro ao criar campo')
-            return false
-          }
+          newFields.push({ field, order: i })
         } else {
-          await fetch(`/api/forms/${formId}/fields/${field.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...field, order: i }),
-          })
+          existingFields.push({ field, order: i })
         }
+      }
+
+      // New fields: sequential (each needs a server-assigned ID)
+      for (const { field, order } of newFields) {
+        const res = await fetch(`/api/forms/${formId}/fields`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...field, order }),
+        })
+        if (res.ok) {
+          idMapping[field.id] = await res.json()
+        } else {
+          const err = await res.json().catch(() => ({}))
+          setSaveError(err.error || 'Erro ao criar campo')
+          return false
+        }
+      }
+
+      // Existing fields: parallel PUTs (no dependency between them)
+      if (existingFields.length > 0) {
+        await Promise.all(
+          existingFields.map(({ field, order }) =>
+            fetch(`/api/forms/${formId}/fields/${field.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...field, order }),
+            })
+          )
+        )
       }
 
       // 3. Apply new IDs via functional update (never overwrites deletions)

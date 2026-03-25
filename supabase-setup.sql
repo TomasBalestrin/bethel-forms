@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS responses (
 CREATE TABLE IF NOT EXISTS response_answers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   response_id UUID NOT NULL REFERENCES responses(id) ON DELETE CASCADE,
-  field_id UUID NOT NULL REFERENCES form_fields(id),
+  field_id UUID REFERENCES form_fields(id) ON DELETE SET NULL,
   value JSONB NOT NULL,
   answered_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -206,19 +206,20 @@ CREATE POLICY IF NOT EXISTS "Users can update own data"
   ON users FOR UPDATE
   USING (auth.uid()::text = id::text OR current_setting('role') = 'service_role');
 
--- Allow inserts from service_role (registration) and anon (fallback)
+-- Allow inserts from service_role only (registration via API uses service_role key)
 CREATE POLICY IF NOT EXISTS "Allow insert for registration"
   ON users FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (current_setting('role') = 'service_role');
 
 -- Forms: users can manage their own forms
 CREATE POLICY IF NOT EXISTS "Users can manage own forms"
   ON forms FOR ALL
   USING (user_id::text = auth.uid()::text OR current_setting('role') = 'service_role');
 
+-- Forms: insert restricted to authenticated user's own ID or service_role
 CREATE POLICY IF NOT EXISTS "Allow insert forms"
   ON forms FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (user_id::text = auth.uid()::text OR current_setting('role') = 'service_role');
 
 -- Form fields: accessible if user owns the form
 CREATE POLICY IF NOT EXISTS "Form fields access"
@@ -231,14 +232,26 @@ CREATE POLICY IF NOT EXISTS "Form fields access"
     OR current_setting('role') = 'service_role'
   );
 
+-- Form fields: insert restricted to fields belonging to user's own forms
 CREATE POLICY IF NOT EXISTS "Allow insert form fields"
   ON form_fields FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM forms WHERE forms.id = form_id
+      AND (forms.user_id::text = auth.uid()::text OR current_setting('role') = 'service_role')
+    )
+    OR current_setting('role') = 'service_role'
+  );
 
--- Responses: public insert (anyone can submit), owner can read
+-- Responses: anyone can insert, but only for published forms
 CREATE POLICY IF NOT EXISTS "Anyone can insert responses"
   ON responses FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM forms WHERE forms.id = form_id AND forms.status = 'published'
+    )
+    OR current_setting('role') = 'service_role'
+  );
 
 CREATE POLICY IF NOT EXISTS "Form owners can read responses"
   ON responses FOR SELECT
@@ -250,10 +263,17 @@ CREATE POLICY IF NOT EXISTS "Form owners can read responses"
     OR current_setting('role') = 'service_role'
   );
 
--- Response answers: public insert, owner can read
+-- Response answers: insert only for existing responses on published forms
 CREATE POLICY IF NOT EXISTS "Anyone can insert answers"
   ON response_answers FOR INSERT
-  WITH CHECK (true);
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM responses
+      JOIN forms ON forms.id = responses.form_id
+      WHERE responses.id = response_id AND forms.status = 'published'
+    )
+    OR current_setting('role') = 'service_role'
+  );
 
 CREATE POLICY IF NOT EXISTS "Form owners can read answers"
   ON response_answers FOR SELECT
@@ -266,13 +286,6 @@ CREATE POLICY IF NOT EXISTS "Form owners can read answers"
     )
     OR current_setting('role') = 'service_role'
   );
-
--- Fix: response_answers.field_id needs ON DELETE SET NULL to allow field deletion
--- Run this if response_answers already has data:
--- ALTER TABLE response_answers DROP CONSTRAINT IF EXISTS response_answers_field_id_fkey;
--- ALTER TABLE response_answers ALTER COLUMN field_id DROP NOT NULL;
--- ALTER TABLE response_answers ADD CONSTRAINT response_answers_field_id_fkey
---   FOREIGN KEY (field_id) REFERENCES form_fields(id) ON DELETE SET NULL;
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_forms_user_id ON forms(user_id);
