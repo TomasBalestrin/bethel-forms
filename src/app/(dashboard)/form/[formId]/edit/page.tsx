@@ -383,9 +383,14 @@ export default function FormEditorPage() {
           )}
 
           <div
-            className="flex-1 flex items-center justify-center overflow-y-auto"
+            className="flex-1 flex items-center justify-center overflow-y-auto relative"
             style={{ backgroundColor: form.settings?.appearance?.backgroundColor || '#ffffff' }}
           >
+            {form.settings?.appearance?.logoUrl && (
+              <div className="absolute top-4 left-4">
+                <img src={form.settings.appearance.logoUrl} alt="" className="h-8 max-w-[140px] object-contain" />
+              </div>
+            )}
             <FieldPreview
               field={selectedField}
               appearance={form.settings?.appearance}

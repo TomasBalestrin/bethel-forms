@@ -86,6 +86,33 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
         </div>
       </div>
 
+      {/* Logo */}
+      <div className="space-y-1.5">
+        <Label>Logotipo</Label>
+        <p className="text-[10px] text-gray-400">Aparece no canto superior esquerdo do formulário.</p>
+        {appearance.logoUrl && (
+          <div className="flex items-center gap-3 p-2 border border-gray-200 rounded-lg bg-gray-50">
+            <img
+              src={appearance.logoUrl}
+              alt="Logo"
+              className="h-8 max-w-[120px] object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+            <button
+              onClick={() => updateAppearance('logoUrl', '')}
+              className="ml-auto text-xs text-red-500 hover:text-red-700"
+            >
+              Remover
+            </button>
+          </div>
+        )}
+        <Input
+          value={appearance.logoUrl || ''}
+          onChange={(e) => updateAppearance('logoUrl', e.target.value)}
+          placeholder="https://exemplo.com/logo.png"
+        />
+      </div>
+
       <div className="space-y-1.5">
         <Label>Barra de progresso</Label>
         <select
