@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
@@ -13,13 +13,9 @@ import { FieldPreview } from '@/components/form-builder/field-preview'
 import { AppearancePanel } from '@/components/form-builder/appearance-panel'
 import {
   Plus,
-  Save,
   Trash2,
   Palette,
-  Settings,
-  Copy,
   Settings2,
-  Image,
 } from 'lucide-react'
 
 const FIELD_TYPE_LABELS: Record<string, { label: string; color: string }> = {
@@ -58,6 +54,16 @@ export default function FormEditorPage() {
   const autoSaveTimer = useRef<NodeJS.Timeout | null>(null)
   const isSaving = useRef(false)
 
+  // ===== REFS for latest state (fixes stale closure in auto-save) =====
+  const formRef = useRef(form)
+  const fieldsRef = useRef(fields)
+  const selectedFieldIdRef = useRef(selectedFieldId)
+
+  // Keep refs in sync with state
+  useEffect(() => { formRef.current = form }, [form])
+  useEffect(() => { fieldsRef.current = fields }, [fields])
+  useEffect(() => { selectedFieldIdRef.current = selectedFieldId }, [selectedFieldId])
+
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
   }, [authStatus, router])
@@ -79,7 +85,7 @@ export default function FormEditorPage() {
         const data = await res.json()
         setForm(data)
         setFields(data.fields || [])
-        if (!selectedFieldId && data.fields?.length > 0) {
+        if (!selectedFieldIdRef.current && data.fields?.length > 0) {
           setSelectedFieldId(data.fields[0].id)
         }
       }
@@ -88,29 +94,34 @@ export default function FormEditorPage() {
     }
   }
 
-  const scheduleAutoSave = useCallback(() => {
+  function scheduleAutoSave() {
     setHasChanges(true)
     setSaveError('')
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
     autoSaveTimer.current = setTimeout(() => {
       saveForm()
     }, 2000)
-  }, [formId])
+  }
 
+  // saveForm reads from refs to ALWAYS get the latest state
   async function saveForm(): Promise<boolean> {
-    if (!form || isSaving.current) return false
+    const currentForm = formRef.current
+    const currentFields = fieldsRef.current
+
+    if (!currentForm || isSaving.current) return false
     isSaving.current = true
     setSaving(true)
     setSaveError('')
 
     try {
+      // 1. Save form settings
       const formRes = await fetch(`/api/forms/${formId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: form.name,
-          slug: form.settings?._slug || form.slug,
-          settings: form.settings,
+          name: currentForm.name,
+          slug: currentForm.settings?._slug || currentForm.slug,
+          settings: currentForm.settings,
         }),
       })
 
@@ -120,7 +131,8 @@ export default function FormEditorPage() {
         return false
       }
 
-      const updatedFields = [...fields]
+      // 2. Save fields
+      const updatedFields = [...currentFields]
       for (let i = 0; i < updatedFields.length; i++) {
         const field = updatedFields[i]
         if (field._isNew) {
@@ -131,7 +143,7 @@ export default function FormEditorPage() {
           })
           if (res.ok) {
             const saved = await res.json()
-            if (selectedFieldId === field.id) {
+            if (selectedFieldIdRef.current === field.id) {
               setSelectedFieldId(saved.id)
             }
             updatedFields[i] = { ...field, ...saved, _isNew: undefined }
@@ -141,11 +153,15 @@ export default function FormEditorPage() {
             return false
           }
         } else {
-          await fetch(`/api/forms/${formId}/fields/${field.id}`, {
+          const res = await fetch(`/api/forms/${formId}/fields/${field.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...field, order: i }),
           })
+          // If the field no longer exists in DB (was deleted), remove from local state
+          if (!res.ok) {
+            console.warn(`Field ${field.id} update failed, may have been deleted`)
+          }
         }
       }
 
@@ -163,6 +179,12 @@ export default function FormEditorPage() {
   }
 
   async function publishForm() {
+    // Cancel any pending auto-save to avoid race conditions
+    if (autoSaveTimer.current) {
+      clearTimeout(autoSaveTimer.current)
+      autoSaveTimer.current = null
+    }
+
     setPublishing(true)
     setPublishError('')
 
@@ -179,7 +201,15 @@ export default function FormEditorPage() {
       if (!res.ok) {
         setPublishError(data.error || 'Erro ao publicar')
       } else {
-        setForm({ ...form, status: data.status })
+        // Refresh form from server to get the canonical published state
+        const refreshRes = await fetch(`/api/forms/${formId}`)
+        if (refreshRes.ok) {
+          const refreshed = await refreshRes.json()
+          setForm(refreshed)
+          setFields(refreshed.fields || [])
+        } else {
+          setForm((prev: any) => ({ ...prev, status: data.status }))
+        }
         setPublishError('')
       }
     } catch (error) {
@@ -235,10 +265,22 @@ export default function FormEditorPage() {
     if (!field) return
     if (field.type === 'welcome' || field.type === 'thanks') return
 
-    if (!field._isNew) {
-      await fetch(`/api/forms/${formId}/fields/${fieldId}`, { method: 'DELETE' })
+    // Cancel any pending auto-save that might still have the old fields
+    if (autoSaveTimer.current) {
+      clearTimeout(autoSaveTimer.current)
+      autoSaveTimer.current = null
     }
 
+    // Delete from DB first
+    if (!field._isNew) {
+      const res = await fetch(`/api/forms/${formId}/fields/${fieldId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        console.error('Failed to delete field from DB')
+        return
+      }
+    }
+
+    // Then update local state
     const updated = fields.filter((f) => f.id !== fieldId).map((f, i) => ({ ...f, order: i }))
     setFields(updated)
 
