@@ -66,7 +66,7 @@ export default function FormSettingsPage() {
     )
   }
 
-  const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/f/${form.slug}`
+  const publicUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${form.slug}`
 
   return (
     <div className="min-h-screen bg-gray-50">

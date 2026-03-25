@@ -86,6 +86,20 @@ export function FormFieldInput({
         />
       )}
 
+      {/* Number */}
+      {field.type === 'number' && (
+        <input
+          type="number"
+          value={value ?? ''}
+          onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+          onKeyDown={handleKeyDown}
+          placeholder={field.placeholder || 'Digite um número...'}
+          autoFocus
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          style={{ borderColor: value !== undefined && value !== '' ? primaryColor : undefined }}
+        />
+      )}
+
       {/* Multiple Choice */}
       {field.type === 'multiple_choice' && (
         <div className="space-y-2">

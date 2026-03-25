@@ -324,10 +324,10 @@ export default function FormEditorPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              if (form.status === 'published') {
-                window.open(`/f/${form.slug}`, '_blank')
+              if (form.slug) {
+                window.open(`/${form.slug}`, '_blank')
               } else {
-                alert('Publique o formulário primeiro para visualizar.')
+                alert('Salve o formulário primeiro para visualizar.')
               }
             }}
           >

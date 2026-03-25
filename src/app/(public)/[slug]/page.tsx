@@ -103,6 +103,9 @@ function PublicFormContent() {
       const digits = value.replace(/\D/g, '')
       if (digits.length < 10 || digits.length > 11) return 'Informe um telefone válido'
     }
+    if (field.type === 'number' && value !== undefined && value !== '' && isNaN(Number(value))) {
+      return 'Informe um número válido'
+    }
     if (field.type === 'satisfaction_scale' && field.required && (value === undefined || value === null)) {
       return 'Selecione uma opção'
     }

@@ -73,6 +73,18 @@ export function FieldPreview({ field, primaryColor = '#2563eb' }: FieldPreviewPr
           </div>
         )}
 
+        {/* Number */}
+        {field.type === 'number' && (
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">
+              {field.title || 'Número'}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </h2>
+            {field.description && <p className="text-gray-500 text-sm mb-4">{field.description}</p>}
+            <Input type="number" placeholder={field.placeholder || 'Digite um número...'} disabled />
+          </div>
+        )}
+
         {/* Multiple Choice */}
         {field.type === 'multiple_choice' && (
           <div>

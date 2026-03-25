@@ -40,7 +40,7 @@ export function FormCard({ form, onDuplicate, onDelete }: FormCardProps) {
   const responseCount = form._count?.responses || 0
 
   function copyLink() {
-    const url = `${window.location.origin}/f/${form.slug}`
+    const url = `${window.location.origin}/${form.slug}`
     navigator.clipboard.writeText(url)
   }
 
