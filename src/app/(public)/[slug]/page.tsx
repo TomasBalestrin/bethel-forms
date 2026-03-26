@@ -35,6 +35,26 @@ function PublicFormContent() {
     loadForm()
   }, [slug])
 
+  // Force background color on html/body to eliminate white borders on mobile
+  useEffect(() => {
+    const bg = formData?.appearance?.backgroundColor || '#ffffff'
+    document.documentElement.style.backgroundColor = bg
+    document.body.style.backgroundColor = bg
+    // Set theme-color meta for mobile browser chrome
+    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement
+    if (!meta) {
+      meta = document.createElement('meta')
+      meta.name = 'theme-color'
+      document.head.appendChild(meta)
+    }
+    meta.content = bg
+    return () => {
+      document.documentElement.style.backgroundColor = ''
+      document.body.style.backgroundColor = ''
+      if (meta) meta.content = '#ffffff'
+    }
+  }, [formData?.appearance?.backgroundColor])
+
   async function loadForm() {
     try {
       const res = await fetch(`/api/public/forms/${slug}?t=${Date.now()}`, { cache: 'no-store' })
@@ -419,13 +439,6 @@ function PublicFormContent() {
           >
             ↓
           </button>
-        </div>
-      )}
-
-      {/* Branding */}
-      {!appearance.removeBranding && (
-        <div className="fixed bottom-4 left-4 text-xs text-gray-400">
-          Feito com <strong>Bethel Forms</strong>
         </div>
       )}
     </div>
