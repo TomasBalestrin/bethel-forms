@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, Eye, Share2, Check, Trash2 } from 'lucide-react'
+import { ArrowLeft, Eye, Share2, Check } from 'lucide-react'
 
 interface FormTopBarProps {
   formId: string
@@ -12,7 +12,6 @@ interface FormTopBarProps {
   formSlug?: string
   formStatus?: string
   onPublish?: () => void
-  onDelete?: () => void
   publishing?: boolean
   saving?: boolean
   hasChanges?: boolean
@@ -31,7 +30,6 @@ export function FormTopBar({
   formSlug,
   formStatus,
   onPublish,
-  onDelete,
   publishing,
   saving,
   hasChanges,
@@ -114,15 +112,6 @@ export function FormTopBar({
           >
             {copied ? <Check size={14} /> : <Share2 size={14} />}
             {copied ? 'Copiado!' : ''}
-          </button>
-        )}
-        {onDelete && (
-          <button
-            onClick={onDelete}
-            className="p-1.5 text-gray-400 rounded-md border border-gray-200 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-colors"
-            title="Excluir formulário"
-          >
-            <Trash2 size={14} />
           </button>
         )}
         {formStatus === 'published' && (

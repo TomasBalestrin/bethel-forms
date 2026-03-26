@@ -132,6 +132,38 @@ export async function DELETE(
       return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
     }
 
+    // 1. Delete all response_answers for this form's fields
+    //    (response_answers.field_id FK may block form_fields deletion)
+    const { data: fieldIds } = await supabaseAdmin
+      .from('form_fields')
+      .select('id')
+      .eq('form_id', params.id)
+
+    if (fieldIds && fieldIds.length > 0) {
+      const ids = fieldIds.map((f: any) => f.id)
+      await supabaseAdmin
+        .from('response_answers')
+        .delete()
+        .in('field_id', ids)
+    }
+
+    // 2. Delete all responses for this form
+    await supabaseAdmin
+      .from('responses')
+      .delete()
+      .eq('form_id', params.id)
+
+    // 3. Delete all fields
+    await supabaseAdmin
+      .from('form_fields')
+      .delete()
+      .eq('form_id', params.id)
+
+    // 4. Delete exports, webhooks (have ON DELETE CASCADE, but be explicit)
+    await supabaseAdmin.from('exports').delete().eq('form_id', params.id)
+    await supabaseAdmin.from('webhooks').delete().eq('form_id', params.id)
+
+    // 5. Finally delete the form itself
     const { error } = await supabaseAdmin.from('forms').delete().eq('id', params.id)
     if (error) {
       console.error('Error deleting form:', error)

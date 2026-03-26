@@ -163,27 +163,33 @@ export default function FormEditorPage() {
         }
       }
 
-      // Existing fields: parallel PUTs (no dependency between them)
+      // Existing fields: parallel PUTs — check every response
       if (existingFields.length > 0) {
-        await Promise.all(
+        const putResults = await Promise.all(
           existingFields.map(({ field, order }) =>
             fetch(`/api/forms/${formId}/fields/${field.id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ...field, order }),
-            })
+            }).then(r => ({ id: field.id, ok: r.ok }))
+              .catch(() => ({ id: field.id, ok: false }))
           )
         )
+        const failedPuts = putResults.filter(r => !r.ok)
+        if (failedPuts.length > 0) {
+          console.error('Failed to update fields:', failedPuts.map(f => f.id))
+          setSaveError(`Erro ao salvar ${failedPuts.length} campo(s)`)
+          return false
+        }
       }
 
       // 3. Sync: delete any DB fields that are NOT in local state (orphan cleanup)
-      // Include both existing field IDs and newly-created field IDs (from idMapping)
+      // Build set of ALL field IDs that SHOULD exist in the DB
       const localFieldIds = new Set(
         fieldsRef.current
           .filter((f: any) => !f._isNew)
           .map((f: any) => f.id)
       )
-      // Also add the new server-assigned IDs so they don't get treated as orphans
       for (const saved of Object.values(idMapping)) {
         if ((saved as any)?.id) localFieldIds.add((saved as any).id)
       }
@@ -361,18 +367,6 @@ export default function FormEditorPage() {
     })
   }
 
-  async function deleteForm() {
-    if (!confirm('Tem certeza que deseja excluir este formulário? Esta ação não pode ser desfeita.')) return
-    try {
-      const res = await fetch(`/api/forms/${formId}`, { method: 'DELETE' })
-      if (res.ok) {
-        router.push('/dash')
-      }
-    } catch (error) {
-      console.error('Error deleting form:', error)
-    }
-  }
-
   function moveField(fromIndex: number, toIndex: number) {
     setFields(prev => {
       if (toIndex < 0 || toIndex >= prev.length) return prev
@@ -403,7 +397,6 @@ export default function FormEditorPage() {
         formSlug={form.slug}
         formStatus={form.status}
         onPublish={publishForm}
-        onDelete={deleteForm}
         publishing={publishing}
         saving={saving}
         hasChanges={hasChanges}
