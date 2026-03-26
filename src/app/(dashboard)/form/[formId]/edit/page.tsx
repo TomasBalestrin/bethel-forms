@@ -114,14 +114,14 @@ export default function FormEditorPage() {
     setSaveError('')
 
     try {
-      // 1. Save form settings
+      // 1. Save form settings (always read latest from ref)
       const formRes = await fetch(`/api/forms/${formId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: currentForm.name,
-          slug: currentForm.settings?._slug || currentForm.slug,
-          settings: currentForm.settings,
+          name: formRef.current.name,
+          slug: formRef.current.settings?._slug || formRef.current.slug,
+          settings: formRef.current.settings,
         }),
       })
 
@@ -131,41 +131,65 @@ export default function FormEditorPage() {
         return false
       }
 
-      // 2. Save fields
-      const updatedFields = [...currentFields]
-      for (let i = 0; i < updatedFields.length; i++) {
-        const field = updatedFields[i]
+      // 2. Save fields — new fields sequentially (need server ID), existing in parallel
+      const idMapping: Record<string, any> = {}
+      const latestFields = fieldsRef.current
+      const newFields: { field: any; order: number }[] = []
+      const existingFields: { field: any; order: number }[] = []
+
+      for (let i = 0; i < currentFields.length; i++) {
+        const field = currentFields[i]
+        if (!latestFields.find((f: any) => f.id === field.id)) continue
         if (field._isNew) {
-          const res = await fetch(`/api/forms/${formId}/fields`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...field, order: i }),
-          })
-          if (res.ok) {
-            const saved = await res.json()
-            if (selectedFieldIdRef.current === field.id) {
-              setSelectedFieldId(saved.id)
-            }
-            updatedFields[i] = { ...field, ...saved, _isNew: undefined }
-          } else {
-            const err = await res.json().catch(() => ({}))
-            setSaveError(err.error || 'Erro ao criar campo')
-            return false
-          }
+          newFields.push({ field, order: i })
         } else {
-          const res = await fetch(`/api/forms/${formId}/fields/${field.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...field, order: i }),
-          })
-          // If the field no longer exists in DB (was deleted), remove from local state
-          if (!res.ok) {
-            console.warn(`Field ${field.id} update failed, may have been deleted`)
-          }
+          existingFields.push({ field, order: i })
         }
       }
 
-      setFields(updatedFields)
+      // New fields: sequential (each needs a server-assigned ID)
+      for (const { field, order } of newFields) {
+        const res = await fetch(`/api/forms/${formId}/fields`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...field, order }),
+        })
+        if (res.ok) {
+          idMapping[field.id] = await res.json()
+        } else {
+          const err = await res.json().catch(() => ({}))
+          setSaveError(err.error || 'Erro ao criar campo')
+          return false
+        }
+      }
+
+      // Existing fields: parallel PUTs (no dependency between them)
+      if (existingFields.length > 0) {
+        await Promise.all(
+          existingFields.map(({ field, order }) =>
+            fetch(`/api/forms/${formId}/fields/${field.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...field, order }),
+            })
+          )
+        )
+      }
+
+      // 3. Apply new IDs via functional update (never overwrites deletions)
+      if (Object.keys(idMapping).length > 0) {
+        setFields(prev => prev.map(f => {
+          const saved = idMapping[f.id]
+          if (saved) {
+            if (selectedFieldIdRef.current === f.id) {
+              setSelectedFieldId(saved.id)
+            }
+            return { ...f, ...saved, _isNew: undefined }
+          }
+          return f
+        }))
+      }
+
       setHasChanges(false)
       return true
     } catch (error) {
@@ -241,14 +265,16 @@ export default function FormEditorPage() {
       conversionEvent: false,
     }
 
-    const thanksIndex = fields.findIndex((f) => f.type === 'thanks')
-    if (thanksIndex > -1 && type !== 'thanks') {
-      const updated = [...fields]
-      updated.splice(thanksIndex, 0, newField)
-      setFields(updated.map((f, i) => ({ ...f, order: i })))
-    } else {
-      setFields([...fields, { ...newField, order: fields.length }])
-    }
+    setFields(prev => {
+      const thanksIndex = prev.findIndex((f) => f.type === 'thanks')
+      if (thanksIndex > -1 && type !== 'thanks') {
+        const updated = [...prev]
+        updated.splice(thanksIndex, 0, newField)
+        return updated.map((f, i) => ({ ...f, order: i }))
+      } else {
+        return [...prev, { ...newField, order: prev.length }]
+      }
+    })
 
     setSelectedFieldId(newField.id)
     setShowFieldSelector(false)
@@ -256,19 +282,29 @@ export default function FormEditorPage() {
   }
 
   function updateField(fieldId: string, updates: any) {
-    setFields(fields.map((f) => (f.id === fieldId ? { ...f, ...updates } : f)))
+    setFields(prev => prev.map((f) => (f.id === fieldId ? { ...f, ...updates } : f)))
     scheduleAutoSave()
   }
 
   async function deleteField(fieldId: string) {
-    const field = fields.find((f) => f.id === fieldId)
+    const currentFields = fieldsRef.current
+    const field = currentFields.find((f: any) => f.id === fieldId)
     if (!field) return
     if (field.type === 'welcome' || field.type === 'thanks') return
 
-    // Cancel any pending auto-save that might still have the old fields
+    // Cancel any pending auto-save
     if (autoSaveTimer.current) {
       clearTimeout(autoSaveTimer.current)
       autoSaveTimer.current = null
+    }
+
+    // Wait for any in-progress save to finish before deleting
+    if (isSaving.current) {
+      await new Promise<void>(resolve => {
+        const check = setInterval(() => {
+          if (!isSaving.current) { clearInterval(check); resolve() }
+        }, 100)
+      })
     }
 
     // Delete from DB first
@@ -280,21 +316,24 @@ export default function FormEditorPage() {
       }
     }
 
-    // Then update local state
-    const updated = fields.filter((f) => f.id !== fieldId).map((f, i) => ({ ...f, order: i }))
-    setFields(updated)
-
-    if (selectedFieldId === fieldId) {
-      setSelectedFieldId(updated[0]?.id || null)
-    }
+    // Functional state update: guarantees we filter the LATEST state
+    setFields(prev => {
+      const updated = prev.filter((f) => f.id !== fieldId).map((f, i) => ({ ...f, order: i }))
+      if (selectedFieldIdRef.current === fieldId) {
+        setSelectedFieldId(updated[0]?.id || null)
+      }
+      return updated
+    })
   }
 
   function moveField(fromIndex: number, toIndex: number) {
-    if (toIndex < 0 || toIndex >= fields.length) return
-    const updated = [...fields]
-    const [moved] = updated.splice(fromIndex, 1)
-    updated.splice(toIndex, 0, moved)
-    setFields(updated.map((f, i) => ({ ...f, order: i })))
+    setFields(prev => {
+      if (toIndex < 0 || toIndex >= prev.length) return prev
+      const updated = [...prev]
+      const [moved] = updated.splice(fromIndex, 1)
+      updated.splice(toIndex, 0, moved)
+      return updated.map((f, i) => ({ ...f, order: i }))
+    })
     scheduleAutoSave()
   }
 
