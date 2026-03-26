@@ -98,10 +98,7 @@ function LoginForm() {
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          Não tem uma conta?{' '}
-          <Link href="/register" className="text-blue-600 hover:underline font-medium">
-            Criar conta grátis
-          </Link>
+          Plataforma de uso interno
         </p>
       </div>
     </div>

@@ -394,6 +394,10 @@ export default function FormEditorPage() {
       <FormTopBar
         formId={formId}
         formName={form.name}
+        onNameChange={(name) => {
+          setForm((prev: any) => ({ ...prev, name }))
+          scheduleAutoSave()
+        }}
         formSlug={form.slug}
         formStatus={form.status}
         onPublish={publishForm}
