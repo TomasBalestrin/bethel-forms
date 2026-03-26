@@ -361,6 +361,18 @@ export default function FormEditorPage() {
     })
   }
 
+  async function deleteForm() {
+    if (!confirm('Tem certeza que deseja excluir este formulário? Esta ação não pode ser desfeita.')) return
+    try {
+      const res = await fetch(`/api/forms/${formId}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.push('/dash')
+      }
+    } catch (error) {
+      console.error('Error deleting form:', error)
+    }
+  }
+
   function moveField(fromIndex: number, toIndex: number) {
     setFields(prev => {
       if (toIndex < 0 || toIndex >= prev.length) return prev
@@ -391,6 +403,7 @@ export default function FormEditorPage() {
         formSlug={form.slug}
         formStatus={form.status}
         onPublish={publishForm}
+        onDelete={deleteForm}
         publishing={publishing}
         saving={saving}
         hasChanges={hasChanges}

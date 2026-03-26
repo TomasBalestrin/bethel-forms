@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils'
 import {
   Type,
+  AlignLeft,
   Mail,
   Phone,
   Hash,
@@ -16,6 +17,7 @@ import {
 const MVP_FIELD_TYPES = [
   { type: 'welcome', label: 'Boas-vindas', icon: Hand, color: 'text-purple-600 bg-purple-50' },
   { type: 'short_text', label: 'Resposta Curta', icon: Type, color: 'text-blue-600 bg-blue-50' },
+  { type: 'long_text', label: 'Resposta Longa', icon: AlignLeft, color: 'text-cyan-600 bg-cyan-50' },
   { type: 'number', label: 'Número', icon: Hash, color: 'text-teal-600 bg-teal-50' },
   { type: 'email', label: 'Email', icon: Mail, color: 'text-green-600 bg-green-50' },
   { type: 'phone', label: 'Telefone', icon: Phone, color: 'text-orange-600 bg-orange-50' },

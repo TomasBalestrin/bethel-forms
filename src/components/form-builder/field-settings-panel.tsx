@@ -72,7 +72,7 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
       </div>
 
       {/* Placeholder - for input fields */}
-      {['short_text', 'email', 'phone', 'number'].includes(field.type) && (
+      {['short_text', 'long_text', 'email', 'phone', 'number'].includes(field.type) && (
         <div className="space-y-1.5">
           <Label>Placeholder</Label>
           <Input

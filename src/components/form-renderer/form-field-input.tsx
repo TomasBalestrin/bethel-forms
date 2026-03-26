@@ -57,6 +57,20 @@ export function FormFieldInput({
 
   return (
     <div className={cn('w-full', error && 'animate-shake')}>
+      {/* Long Text */}
+      {field.type === 'long_text' && (
+        <textarea
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || 'Digite sua resposta...'}
+          maxLength={settings.maxLength || undefined}
+          autoFocus
+          rows={5}
+          className="w-full bg-transparent border-2 border-gray-300 focus:border-blue-500 outline-none p-3 text-lg transition-colors rounded-lg resize-y custom-placeholder"
+          style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
+        />
+      )}
+
       {/* Short Text */}
       {field.type === 'short_text' && (
         <input
