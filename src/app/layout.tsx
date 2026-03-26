@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'FormFlow - Formulários Inteligentes',
-  description: 'Crie formulários profissionais com Meta Pixel nativo, slug personalizado e visualização de respostas em tempo real.',
+  title: 'Bethel Forms - Formulários Inteligentes',
+  description: 'Crie formulários profissionais com rastreamento nativo, personalização completa e análise de respostas em tempo real.',
 }
 
 export default function RootLayout({

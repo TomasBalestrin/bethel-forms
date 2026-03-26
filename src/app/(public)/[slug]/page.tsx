@@ -428,7 +428,7 @@ function PublicFormContent() {
       {/* Branding */}
       {!appearance.removeBranding && (
         <div className="fixed bottom-4 left-4 text-xs text-gray-400">
-          Feito com <strong>FormFlow</strong>
+          Feito com <strong>Bethel Forms</strong>
         </div>
       )}
     </div>
