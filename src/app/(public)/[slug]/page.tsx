@@ -108,19 +108,12 @@ function PublicFormContent() {
 
   const titleStyle: React.CSSProperties = {
     color: textColor,
-    fontSize: appearance.titleFontSize ? `${appearance.titleFontSize}px` : undefined,
-    fontWeight: appearance.titleFontWeight || undefined,
   }
   const descriptionColor = appearance.descriptionColor || '#6b7280'
   const descStyle: React.CSSProperties = {
     color: descriptionColor,
-    fontSize: appearance.descriptionFontSize ? `${appearance.descriptionFontSize}px` : undefined,
-    fontWeight: appearance.descriptionFontWeight || undefined,
   }
-  const answerStyle: React.CSSProperties = {
-    fontSize: appearance.answerFontSize ? `${appearance.answerFontSize}px` : undefined,
-    fontWeight: appearance.answerFontWeight || undefined,
-  }
+  const answerStyle: React.CSSProperties = {}
   const totalInputFields = fields.filter(
     (f: any) => !['welcome', 'thanks', 'message'].includes(f.type)
   ).length
@@ -322,8 +315,8 @@ function PublicFormContent() {
           {/* Fallback thanks screen */}
           {completed && !currentField && (
             <div className="text-center">
-              <h1 className="text-2xl sm:text-3xl font-bold mb-3">Obrigado!</h1>
-              <p className="text-base sm:text-lg text-gray-500">Suas respostas foram enviadas com sucesso.</p>
+              <h1 className="form-title mb-3">Obrigado!</h1>
+              <p className="form-desc text-gray-500">Suas respostas foram enviadas com sucesso.</p>
             </div>
           )}
 
@@ -332,13 +325,13 @@ function PublicFormContent() {
               {/* Welcome */}
               {currentField.type === 'welcome' && (
                 <div className="text-center">
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
+                  <h1 className="form-title mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-base sm:text-lg mb-6 sm:mb-8 whitespace-pre-line text-left" style={descStyle}>{currentField.description}</p>
+                    <p className="form-desc mb-6 sm:mb-8 whitespace-pre-line text-left" style={descStyle}>{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
-                    className="w-full sm:w-auto px-8 py-3.5 sm:py-3 rounded-lg text-white font-medium text-base sm:text-lg min-h-[48px]"
+                    className="w-full sm:w-auto px-8 py-3.5 sm:py-3 rounded-lg text-white font-medium form-answer min-h-[48px]"
                     style={{ backgroundColor: primaryColor }}
                   >
                     Começar
@@ -349,9 +342,9 @@ function PublicFormContent() {
               {/* Thanks */}
               {currentField.type === 'thanks' && (
                 <div className="text-center">
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
+                  <h1 className="form-title mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-base sm:text-lg mb-6 whitespace-pre-line text-left" style={descStyle}>{currentField.description}</p>
+                    <p className="form-desc mb-6 whitespace-pre-line text-left" style={descStyle}>{currentField.description}</p>
                   )}
                   {currentField.settings?.thanksType === 'redirect' && currentField.settings?.redirectUrl && /^https?:\/\//.test(currentField.settings.redirectUrl) && (
                     <a
@@ -369,9 +362,9 @@ function PublicFormContent() {
               {/* Message */}
               {currentField.type === 'message' && (
                 <div className="text-center">
-                  <h2 className="text-xl sm:text-2xl font-bold mb-3" style={titleStyle}>{currentField.title}</h2>
+                  <h2 className="form-title mb-3" style={titleStyle}>{currentField.title}</h2>
                   {currentField.description && (
-                    <p className="mb-6 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
+                    <p className="form-desc mb-6 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
@@ -386,12 +379,12 @@ function PublicFormContent() {
               {/* Input fields */}
               {!['welcome', 'thanks', 'message'].includes(currentField.type) && (
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-semibold mb-1" style={titleStyle}>
+                  <h2 className="form-title mb-1" style={titleStyle}>
                     {currentField.title}
                     {currentField.required && <span className="text-red-500 ml-1">*</span>}
                   </h2>
                   {currentField.description && (
-                    <p className="mb-4 sm:mb-6 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
+                    <p className="form-desc mb-4 sm:mb-6 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
                   )}
 
                   <FormFieldInput
