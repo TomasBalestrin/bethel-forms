@@ -57,6 +57,18 @@ export default function FormEditorPage() {
     if (authStatus === 'authenticated') fetchForm()
   }, [formId, authStatus])
 
+  // Warn user before leaving with unsaved changes
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasChanges) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasChanges])
+
   async function fetchForm() {
     try {
       const res = await fetch(`/api/forms/${formId}`)
@@ -161,6 +173,9 @@ export default function FormEditorPage() {
     setPublishing(true)
     setPublishError('')
 
+    // Build ordered list with explicit order index (avoids indexOf fragility)
+    const orderedFields = fields.map((f, i) => ({ ...f, order: i }))
+
     try {
       // 1. Save form settings
       const formRes = await fetch(`/api/forms/${formId}`, {
@@ -179,26 +194,15 @@ export default function FormEditorPage() {
         return
       }
 
-      // 2. Delete fields that were removed locally but exist in DB
-      const currentFieldIds = new Set(fields.map(f => f.id))
-      const deletedIds = Array.from(originalFieldIds).filter(id => !currentFieldIds.has(id))
-      if (deletedIds.length > 0) {
-        await Promise.all(
-          deletedIds.map(id =>
-            fetch(`/api/forms/${formId}/fields/${id}`, { method: 'DELETE' })
-          )
-        )
-      }
-
-      // 3. Create new fields (sequential — need server IDs)
+      // 2. Create new fields FIRST (sequential — need server IDs)
+      //    Done before deletes so a mid-publish failure doesn't leave orphaned deletes
       const idMapping: Record<string, string> = {}
-      for (let i = 0; i < fields.length; i++) {
-        const field = fields[i]
+      for (const field of orderedFields) {
         if (field._isNew) {
           const res = await fetch(`/api/forms/${formId}/fields`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...field, order: i }),
+            body: JSON.stringify({ ...field }),
           })
           if (res.ok) {
             const saved = await res.json()
@@ -212,18 +216,17 @@ export default function FormEditorPage() {
         }
       }
 
-      // 4. Update existing fields (parallel)
-      const existingFields = fields.filter(f => !f._isNew)
+      // 3. Update existing fields (parallel)
+      const existingFields = orderedFields.filter(f => !f._isNew)
       if (existingFields.length > 0) {
         const results = await Promise.all(
-          existingFields.map((field, _) => {
-            const order = fields.indexOf(field)
-            return fetch(`/api/forms/${formId}/fields/${field.id}`, {
+          existingFields.map(field =>
+            fetch(`/api/forms/${formId}/fields/${field.id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...field, order }),
+              body: JSON.stringify({ ...field }),
             }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false }))
-          })
+          )
         )
         const failed = results.filter(r => !r.ok).length
         if (failed > 0) {
@@ -231,6 +234,17 @@ export default function FormEditorPage() {
           setPublishing(false)
           return
         }
+      }
+
+      // 4. Delete removed fields LAST (safe — creates/updates already succeeded)
+      const currentFieldIds = new Set(fields.map(f => f.id))
+      const deletedIds = Array.from(originalFieldIds).filter(id => !currentFieldIds.has(id))
+      if (deletedIds.length > 0) {
+        await Promise.all(
+          deletedIds.map(id =>
+            fetch(`/api/forms/${formId}/fields/${id}`, { method: 'DELETE' })
+          )
+        )
       }
 
       // 5. Publish
