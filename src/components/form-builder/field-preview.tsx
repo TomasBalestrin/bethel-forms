@@ -77,6 +77,18 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
           </div>
         )}
 
+        {/* Long Text */}
+        {field.type === 'long_text' && (
+          <div>
+            <h2 className="text-xl font-semibold mb-1" style={titleStyle}>
+              {field.title || 'Resposta longa'}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </h2>
+            {field.description && <p className="text-sm mb-4 whitespace-pre-line" style={descStyle}>{field.description}</p>}
+            <Textarea placeholder={field.placeholder || 'Digite sua resposta...'} disabled style={answerStyle} rows={4} />
+          </div>
+        )}
+
         {/* Email */}
         {field.type === 'email' && (
           <div>
