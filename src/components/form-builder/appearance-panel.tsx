@@ -11,15 +11,6 @@ interface AppearancePanelProps {
   onUpdate: (settings: any) => void
 }
 
-const FONT_WEIGHT_OPTIONS = [
-  { value: '300', label: 'Light' },
-  { value: '400', label: 'Normal' },
-  { value: '500', label: 'Medium' },
-  { value: '600', label: 'Semibold' },
-  { value: '700', label: 'Bold' },
-  { value: '800', label: 'Extra Bold' },
-]
-
 function CollapsibleSection({
   title,
   defaultOpen = true,
@@ -160,99 +151,6 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
             <option value="square">Reto</option>
             <option value="pill">Pill</option>
           </select>
-        </div>
-      </CollapsibleSection>
-
-      {/* Tipografia */}
-      <CollapsibleSection title="Tipografia" defaultOpen={false}>
-        {/* Title */}
-        <div>
-          <Label className="text-xs text-gray-500 uppercase tracking-wider">Título</Label>
-          <div className="grid grid-cols-2 gap-2 mt-1.5">
-            <div>
-              <span className="text-[10px] text-gray-400">Tamanho (px)</span>
-              <Input
-                type="number"
-                value={appearance.titleFontSize || ''}
-                onChange={(e) => updateAppearance('titleFontSize', e.target.value || undefined)}
-                placeholder="24"
-                min={12}
-                max={72}
-              />
-            </div>
-            <div>
-              <span className="text-[10px] text-gray-400">Peso</span>
-              <select
-                value={appearance.titleFontWeight || '700'}
-                onChange={(e) => updateAppearance('titleFontWeight', e.target.value)}
-                className="w-full h-10 rounded-md border border-gray-300 bg-white px-2 text-sm"
-              >
-                {FONT_WEIGHT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Description */}
-        <div>
-          <Label className="text-xs text-gray-500 uppercase tracking-wider">Descrição</Label>
-          <div className="grid grid-cols-2 gap-2 mt-1.5">
-            <div>
-              <span className="text-[10px] text-gray-400">Tamanho (px)</span>
-              <Input
-                type="number"
-                value={appearance.descriptionFontSize || ''}
-                onChange={(e) => updateAppearance('descriptionFontSize', e.target.value || undefined)}
-                placeholder="16"
-                min={10}
-                max={48}
-              />
-            </div>
-            <div>
-              <span className="text-[10px] text-gray-400">Peso</span>
-              <select
-                value={appearance.descriptionFontWeight || '400'}
-                onChange={(e) => updateAppearance('descriptionFontWeight', e.target.value)}
-                className="w-full h-10 rounded-md border border-gray-300 bg-white px-2 text-sm"
-              >
-                {FONT_WEIGHT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Answer */}
-        <div>
-          <Label className="text-xs text-gray-500 uppercase tracking-wider">Resposta</Label>
-          <div className="grid grid-cols-2 gap-2 mt-1.5">
-            <div>
-              <span className="text-[10px] text-gray-400">Tamanho (px)</span>
-              <Input
-                type="number"
-                value={appearance.answerFontSize || ''}
-                onChange={(e) => updateAppearance('answerFontSize', e.target.value || undefined)}
-                placeholder="16"
-                min={10}
-                max={48}
-              />
-            </div>
-            <div>
-              <span className="text-[10px] text-gray-400">Peso</span>
-              <select
-                value={appearance.answerFontWeight || '400'}
-                onChange={(e) => updateAppearance('answerFontWeight', e.target.value)}
-                className="w-full h-10 rounded-md border border-gray-300 bg-white px-2 text-sm"
-              >
-                {FONT_WEIGHT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
         </div>
       </CollapsibleSection>
 

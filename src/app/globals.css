@@ -50,6 +50,29 @@ body {
   color: var(--placeholder-color, #9ca3af);
 }
 
+/* Form font sizes: mobile-first, then desktop */
+.form-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+.form-desc {
+  font-size: 13px;
+}
+.form-answer {
+  font-size: 15px;
+}
+@media (min-width: 640px) {
+  .form-title {
+    font-size: 28px;
+  }
+  .form-desc {
+    font-size: 18px;
+  }
+  .form-answer {
+    font-size: 18px;
+  }
+}
+
 /* Progress bar animation */
 .progress-bar-fill {
   transition: width 0.3s ease;

@@ -31,22 +31,9 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
   const descriptionColor = appearance.descriptionColor || '#6b7280'
   const optionColor = appearance.optionColor || '#d1d5db'
 
-  const titleStyle: React.CSSProperties = {
-    color: textColor,
-    fontSize: appearance.titleFontSize ? `${appearance.titleFontSize}px` : undefined,
-    fontWeight: appearance.titleFontWeight || undefined,
-  }
-
-  const descStyle: React.CSSProperties = {
-    color: descriptionColor,
-    fontSize: appearance.descriptionFontSize ? `${appearance.descriptionFontSize}px` : undefined,
-    fontWeight: appearance.descriptionFontWeight || undefined,
-  }
-
-  const answerStyle: React.CSSProperties = {
-    fontSize: appearance.answerFontSize ? `${appearance.answerFontSize}px` : undefined,
-    fontWeight: appearance.answerFontWeight || undefined,
-  }
+  const titleStyle: React.CSSProperties = { color: textColor }
+  const descStyle: React.CSSProperties = { color: descriptionColor }
+  const answerStyle: React.CSSProperties = {}
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] p-8">
