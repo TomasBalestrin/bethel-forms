@@ -1,11 +1,9 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { FormTopBar } from '@/components/dashboard/form-top-bar'
 import { FieldTypeSelector } from '@/components/form-builder/field-type-selector'
 import { FieldSettingsPanel } from '@/components/form-builder/field-settings-panel'
@@ -43,26 +41,13 @@ export default function FormEditorPage() {
 
   const [form, setForm] = useState<any>(null)
   const [fields, setFields] = useState<any[]>([])
+  const [originalFieldIds, setOriginalFieldIds] = useState<Set<string>>(new Set())
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
   const [showFieldSelector, setShowFieldSelector] = useState(false)
   const [rightPanel, setRightPanel] = useState<'settings' | 'appearance'>('settings')
-  const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
-  const [saveError, setSaveError] = useState('')
   const [publishError, setPublishError] = useState('')
-  const autoSaveTimer = useRef<NodeJS.Timeout | null>(null)
-  const isSaving = useRef(false)
-
-  // ===== REFS for latest state (fixes stale closure in auto-save) =====
-  const formRef = useRef(form)
-  const fieldsRef = useRef(fields)
-  const selectedFieldIdRef = useRef(selectedFieldId)
-
-  // Keep refs in sync with state
-  useEffect(() => { formRef.current = form }, [form])
-  useEffect(() => { fieldsRef.current = fields }, [fields])
-  useEffect(() => { selectedFieldIdRef.current = selectedFieldId }, [selectedFieldId])
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
@@ -72,11 +57,17 @@ export default function FormEditorPage() {
     if (authStatus === 'authenticated') fetchForm()
   }, [formId, authStatus])
 
+  // Warn user before leaving with unsaved changes
   useEffect(() => {
-    return () => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasChanges) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
     }
-  }, [])
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasChanges])
 
   async function fetchForm() {
     try {
@@ -85,7 +76,9 @@ export default function FormEditorPage() {
         const data = await res.json()
         setForm(data)
         setFields(data.fields || [])
-        if (!selectedFieldIdRef.current && data.fields?.length > 0) {
+        setOriginalFieldIds(new Set((data.fields || []).map((f: any) => f.id)))
+        setHasChanges(false)
+        if (!selectedFieldId && data.fields?.length > 0) {
           setSelectedFieldId(data.fields[0].id)
         }
       }
@@ -94,185 +87,13 @@ export default function FormEditorPage() {
     }
   }
 
-  function scheduleAutoSave() {
+  // =============================================
+  // ALL EDITS ARE LOCAL — no API calls until publish
+  // =============================================
+
+  function markChanged() {
     setHasChanges(true)
-    setSaveError('')
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = setTimeout(() => {
-      saveForm()
-    }, 2000)
-  }
-
-  // saveForm reads from refs to ALWAYS get the latest state
-  async function saveForm(): Promise<boolean> {
-    const currentForm = formRef.current
-    const currentFields = fieldsRef.current
-
-    if (!currentForm || isSaving.current) return false
-    isSaving.current = true
-    setSaving(true)
-    setSaveError('')
-
-    try {
-      // 1. Save form settings (always read latest from ref)
-      const formRes = await fetch(`/api/forms/${formId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formRef.current.name,
-          slug: formRef.current.settings?._slug || formRef.current.slug,
-          settings: formRef.current.settings,
-        }),
-      })
-
-      if (!formRes.ok) {
-        const err = await formRes.json().catch(() => ({}))
-        setSaveError(err.error || 'Erro ao salvar formulário')
-        return false
-      }
-
-      // 2. Save fields — new fields sequentially (need server ID), existing in parallel
-      const idMapping: Record<string, any> = {}
-      const latestFields = fieldsRef.current
-      const newFields: { field: any; order: number }[] = []
-      const existingFields: { field: any; order: number }[] = []
-
-      for (let i = 0; i < currentFields.length; i++) {
-        const field = currentFields[i]
-        if (!latestFields.find((f: any) => f.id === field.id)) continue
-        if (field._isNew) {
-          newFields.push({ field, order: i })
-        } else {
-          existingFields.push({ field, order: i })
-        }
-      }
-
-      // New fields: sequential (each needs a server-assigned ID)
-      for (const { field, order } of newFields) {
-        const res = await fetch(`/api/forms/${formId}/fields`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...field, order }),
-        })
-        if (res.ok) {
-          idMapping[field.id] = await res.json()
-        } else {
-          const err = await res.json().catch(() => ({}))
-          setSaveError(err.error || 'Erro ao criar campo')
-          return false
-        }
-      }
-
-      // Existing fields: parallel PUTs — check every response
-      if (existingFields.length > 0) {
-        const putResults = await Promise.all(
-          existingFields.map(({ field, order }) =>
-            fetch(`/api/forms/${formId}/fields/${field.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...field, order }),
-            }).then(r => ({ id: field.id, ok: r.ok }))
-              .catch(() => ({ id: field.id, ok: false }))
-          )
-        )
-        const failedPuts = putResults.filter(r => !r.ok)
-        if (failedPuts.length > 0) {
-          console.error('Failed to update fields:', failedPuts.map(f => f.id))
-          setSaveError(`Erro ao salvar ${failedPuts.length} campo(s)`)
-          return false
-        }
-      }
-
-      // 3. Sync: delete any DB fields that are NOT in local state (orphan cleanup)
-      // Build set of ALL field IDs that SHOULD exist in the DB
-      const localFieldIds = new Set(
-        fieldsRef.current
-          .filter((f: any) => !f._isNew)
-          .map((f: any) => f.id)
-      )
-      for (const saved of Object.values(idMapping)) {
-        if ((saved as any)?.id) localFieldIds.add((saved as any).id)
-      }
-
-      const { data: dbFields } = await fetch(`/api/forms/${formId}`)
-        .then(r => r.ok ? r.json() : { fields: [] })
-        .then(d => ({ data: (d.fields || []) as any[] }))
-        .catch(() => ({ data: [] as any[] }))
-
-      const orphanIds = dbFields.filter((f: any) => !localFieldIds.has(f.id)).map((f: any) => f.id)
-      if (orphanIds.length > 0) {
-        await Promise.all(
-          orphanIds.map((id: string) =>
-            fetch(`/api/forms/${formId}/fields/${id}`, { method: 'DELETE' })
-          )
-        )
-      }
-
-      // 4. Apply new IDs via functional update (never overwrites deletions)
-      if (Object.keys(idMapping).length > 0) {
-        setFields(prev => prev.map(f => {
-          const saved = idMapping[f.id]
-          if (saved) {
-            if (selectedFieldIdRef.current === f.id) {
-              setSelectedFieldId(saved.id)
-            }
-            return { ...f, ...saved, _isNew: undefined }
-          }
-          return f
-        }))
-      }
-
-      setHasChanges(false)
-      return true
-    } catch (error) {
-      console.error('Error saving:', error)
-      setSaveError('Erro de conexão ao salvar')
-      return false
-    } finally {
-      setSaving(false)
-      isSaving.current = false
-    }
-  }
-
-  async function publishForm() {
-    // Cancel any pending auto-save to avoid race conditions
-    if (autoSaveTimer.current) {
-      clearTimeout(autoSaveTimer.current)
-      autoSaveTimer.current = null
-    }
-
-    setPublishing(true)
     setPublishError('')
-
-    const saved = await saveForm()
-    if (!saved) {
-      setPublishing(false)
-      return
-    }
-
-    try {
-      const res = await fetch(`/api/forms/${formId}/publish`, { method: 'POST' })
-      const data = await res.json()
-
-      if (!res.ok) {
-        setPublishError(data.error || 'Erro ao publicar')
-      } else {
-        // Refresh form from server to get the canonical published state
-        const refreshRes = await fetch(`/api/forms/${formId}`)
-        if (refreshRes.ok) {
-          const refreshed = await refreshRes.json()
-          setForm(refreshed)
-          setFields(refreshed.fields || [])
-        } else {
-          setForm((prev: any) => ({ ...prev, status: data.status }))
-        }
-        setPublishError('')
-      }
-    } catch (error) {
-      console.error('Error publishing:', error)
-      setPublishError('Erro de conexão ao publicar')
-    }
-    setPublishing(false)
   }
 
   function addField(type: string) {
@@ -310,61 +131,27 @@ export default function FormEditorPage() {
 
     setSelectedFieldId(newField.id)
     setShowFieldSelector(false)
-    scheduleAutoSave()
+    markChanged()
   }
 
   function updateField(fieldId: string, updates: any) {
     setFields(prev => prev.map((f) => (f.id === fieldId ? { ...f, ...updates } : f)))
-    scheduleAutoSave()
+    markChanged()
   }
 
-  async function deleteField(fieldId: string) {
-    const currentFields = fieldsRef.current
-    const field = currentFields.find((f: any) => f.id === fieldId)
+  function deleteField(fieldId: string) {
+    const field = fields.find((f) => f.id === fieldId)
     if (!field) return
     if (field.type === 'welcome' || field.type === 'thanks') return
 
-    // Cancel any pending auto-save
-    if (autoSaveTimer.current) {
-      clearTimeout(autoSaveTimer.current)
-      autoSaveTimer.current = null
-    }
-
-    // Wait for any in-progress save to finish before deleting
-    if (isSaving.current) {
-      await new Promise<void>(resolve => {
-        const check = setInterval(() => {
-          if (!isSaving.current) { clearInterval(check); resolve() }
-        }, 100)
-      })
-    }
-
-    // Delete from DB FIRST and AWAIT confirmation
-    if (!field._isNew) {
-      try {
-        const res = await fetch(`/api/forms/${formId}/fields/${fieldId}`, { method: 'DELETE' })
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          console.error('Delete failed:', err)
-          setSaveError(err.error || 'Erro ao excluir campo')
-          // Don't remove from UI if DB delete failed
-          return
-        }
-      } catch (err) {
-        console.error('Delete network error:', err)
-        setSaveError('Erro de conexão ao excluir campo')
-        return
-      }
-    }
-
-    // Only remove from state AFTER DB confirms deletion
     setFields(prev => {
       const updated = prev.filter((f) => f.id !== fieldId).map((f, i) => ({ ...f, order: i }))
-      if (selectedFieldIdRef.current === fieldId) {
+      if (selectedFieldId === fieldId) {
         setSelectedFieldId(updated[0]?.id || null)
       }
       return updated
     })
+    markChanged()
   }
 
   function moveField(fromIndex: number, toIndex: number) {
@@ -375,7 +162,116 @@ export default function FormEditorPage() {
       updated.splice(toIndex, 0, moved)
       return updated.map((f, i) => ({ ...f, order: i }))
     })
-    scheduleAutoSave()
+    markChanged()
+  }
+
+  // =============================================
+  // PUBLISH: saves everything to DB then publishes
+  // =============================================
+
+  async function publishForm() {
+    setPublishing(true)
+    setPublishError('')
+
+    // Build ordered list with explicit order index (avoids indexOf fragility)
+    const orderedFields = fields.map((f, i) => ({ ...f, order: i }))
+
+    try {
+      // 1. Save form settings
+      const formRes = await fetch(`/api/forms/${formId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          slug: form.settings?._slug || form.slug,
+          settings: form.settings,
+        }),
+      })
+      if (!formRes.ok) {
+        const err = await formRes.json().catch(() => ({}))
+        setPublishError(err.error || 'Erro ao salvar formulário')
+        setPublishing(false)
+        return
+      }
+
+      // 2. Create new fields FIRST (sequential — need server IDs)
+      //    Done before deletes so a mid-publish failure doesn't leave orphaned deletes
+      const idMapping: Record<string, string> = {}
+      for (const field of orderedFields) {
+        if (field._isNew) {
+          const res = await fetch(`/api/forms/${formId}/fields`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...field }),
+          })
+          if (res.ok) {
+            const saved = await res.json()
+            idMapping[field.id] = saved.id
+          } else {
+            const err = await res.json().catch(() => ({}))
+            setPublishError(err.error || 'Erro ao criar campo')
+            setPublishing(false)
+            return
+          }
+        }
+      }
+
+      // 3. Update existing fields (parallel)
+      const existingFields = orderedFields.filter(f => !f._isNew)
+      if (existingFields.length > 0) {
+        const results = await Promise.all(
+          existingFields.map(field =>
+            fetch(`/api/forms/${formId}/fields/${field.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...field }),
+            }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false }))
+          )
+        )
+        const failed = results.filter(r => !r.ok).length
+        if (failed > 0) {
+          setPublishError(`Erro ao salvar ${failed} campo(s)`)
+          setPublishing(false)
+          return
+        }
+      }
+
+      // 4. Delete removed fields LAST (safe — creates/updates already succeeded)
+      const currentFieldIds = new Set(fields.map(f => f.id))
+      const deletedIds = Array.from(originalFieldIds).filter(id => !currentFieldIds.has(id))
+      if (deletedIds.length > 0) {
+        await Promise.all(
+          deletedIds.map(id =>
+            fetch(`/api/forms/${formId}/fields/${id}`, { method: 'DELETE' })
+          )
+        )
+      }
+
+      // 5. Publish
+      const pubRes = await fetch(`/api/forms/${formId}/publish`, { method: 'POST' })
+      const pubData = await pubRes.json()
+      if (!pubRes.ok) {
+        setPublishError(pubData.error || 'Erro ao publicar')
+        setPublishing(false)
+        return
+      }
+
+      // 6. Refresh from server (canonical state)
+      const refreshRes = await fetch(`/api/forms/${formId}`)
+      if (refreshRes.ok) {
+        const refreshed = await refreshRes.json()
+        setForm(refreshed)
+        setFields(refreshed.fields || [])
+        setOriginalFieldIds(new Set((refreshed.fields || []).map((f: any) => f.id)))
+      }
+
+      setHasChanges(false)
+      setPublishError('')
+    } catch (error) {
+      console.error('Error publishing:', error)
+      setPublishError('Erro de conexão')
+    }
+    setPublishing(false)
   }
 
   const selectedField = fields.find((f) => f.id === selectedFieldId)
@@ -390,17 +286,19 @@ export default function FormEditorPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      {/* Top Bar */}
       <FormTopBar
         formId={formId}
         formName={form.name}
+        onNameChange={(name) => {
+          setForm((prev: any) => ({ ...prev, name }))
+          markChanged()
+        }}
         formSlug={form.slug}
         formStatus={form.status}
         onPublish={publishForm}
         publishing={publishing}
-        saving={saving}
         hasChanges={hasChanges}
-        saveError={saveError || publishError}
+        saveError={publishError}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -450,7 +348,6 @@ export default function FormEditorPage() {
             })}
           </div>
 
-          {/* Add field button */}
           <div className="p-3 border-t border-gray-100">
             <button
               onClick={() => setShowFieldSelector(true)}
@@ -464,7 +361,6 @@ export default function FormEditorPage() {
 
         {/* Center - Preview */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Field type indicator + actions */}
           {selectedField && (
             <div className="flex items-center justify-between px-6 py-2 bg-white border-b border-gray-100">
               <div>
@@ -534,8 +430,8 @@ export default function FormEditorPage() {
               <AppearancePanel
                 settings={form.settings}
                 onUpdate={(newSettings) => {
-                  setForm({ ...form, settings: newSettings })
-                  scheduleAutoSave()
+                  setForm((prev: any) => ({ ...prev, settings: newSettings }))
+                  markChanged()
                 }}
               />
             )}
@@ -543,7 +439,6 @@ export default function FormEditorPage() {
         </div>
       </div>
 
-      {/* Field Type Selector Modal */}
       {showFieldSelector && (
         <FieldTypeSelector
           onSelect={addField}

@@ -4,11 +4,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, Eye, Share2, Check } from 'lucide-react'
+import { ArrowLeft, Eye, Share2, Check, Pencil } from 'lucide-react'
 
 interface FormTopBarProps {
   formId: string
   formName: string
+  onNameChange?: (name: string) => void
   formSlug?: string
   formStatus?: string
   onPublish?: () => void
@@ -27,6 +28,7 @@ const tabs = [
 export function FormTopBar({
   formId,
   formName,
+  onNameChange,
   formSlug,
   formStatus,
   onPublish,
@@ -39,6 +41,7 @@ export function FormTopBar({
   const pathname = usePathname()
   const router = useRouter()
   const [copied, setCopied] = useState(false)
+  const [editingName, setEditingName] = useState(false)
 
   const activeTab = tabs.find((t) => pathname.includes(t.path))?.path || 'edit'
 
@@ -51,9 +54,25 @@ export function FormTopBar({
         >
           <ArrowLeft size={18} />
         </button>
-        <span className="text-sm font-semibold text-gray-900 truncate max-w-[240px]">
-          {formName || 'Sem título'}
-        </span>
+        {editingName && onNameChange ? (
+          <input
+            autoFocus
+            value={formName}
+            onChange={(e) => onNameChange(e.target.value)}
+            onBlur={() => setEditingName(false)}
+            onKeyDown={(e) => { if (e.key === 'Enter') setEditingName(false) }}
+            className="text-sm font-semibold text-gray-900 bg-white border border-blue-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 w-64"
+          />
+        ) : (
+          <button
+            onClick={() => onNameChange && setEditingName(true)}
+            className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 truncate max-w-[240px] hover:text-blue-600 transition-colors group"
+            title="Clique para editar o nome"
+          >
+            {formName || 'Sem título'}
+            {onNameChange && <Pencil size={12} className="text-gray-300 group-hover:text-blue-400 flex-shrink-0" />}
+          </button>
+        )}
         {saving && (
           <span className="text-xs text-gray-400 flex-shrink-0">Salvando...</span>
         )}

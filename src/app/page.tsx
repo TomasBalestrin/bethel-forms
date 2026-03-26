@@ -119,15 +119,9 @@ export default function HomePage() {
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-4 py-2"
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/register"
               className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors px-5 py-2.5 rounded-lg"
             >
-              Criar conta gratis
+              Entrar
             </Link>
           </div>
         </div>
@@ -155,14 +149,13 @@ export default function HomePage() {
             personalizacao completa e analise de respostas em tempo real.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex justify-center">
             <Link
-              href="/register"
+              href="/login"
               className="px-8 py-3.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors text-base"
             >
-              Comece Gratis
+              Acessar Plataforma
             </Link>
-            <p className="text-sm text-gray-400">Sem cartao de credito</p>
           </div>
         </div>
       </section>
@@ -301,13 +294,13 @@ export default function HomePage() {
             Pronto para Comecar?
           </h2>
           <p className="text-gray-500 mb-8 text-lg">
-            Crie sua conta gratis e lance seu primeiro formulario em minutos.
+            Acesse a plataforma e lance seu primeiro formulario em minutos.
           </p>
           <Link
-            href="/register"
+            href="/login"
             className="inline-block px-8 py-3.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors text-base"
           >
-            Criar Conta Gratis
+            Acessar Plataforma
           </Link>
         </div>
       </section>
