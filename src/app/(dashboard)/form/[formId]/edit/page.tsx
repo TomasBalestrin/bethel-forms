@@ -176,7 +176,33 @@ export default function FormEditorPage() {
         )
       }
 
-      // 3. Apply new IDs via functional update (never overwrites deletions)
+      // 3. Sync: delete any DB fields that are NOT in local state (orphan cleanup)
+      // Include both existing field IDs and newly-created field IDs (from idMapping)
+      const localFieldIds = new Set(
+        fieldsRef.current
+          .filter((f: any) => !f._isNew)
+          .map((f: any) => f.id)
+      )
+      // Also add the new server-assigned IDs so they don't get treated as orphans
+      for (const saved of Object.values(idMapping)) {
+        if ((saved as any)?.id) localFieldIds.add((saved as any).id)
+      }
+
+      const { data: dbFields } = await fetch(`/api/forms/${formId}`)
+        .then(r => r.ok ? r.json() : { fields: [] })
+        .then(d => ({ data: (d.fields || []) as any[] }))
+        .catch(() => ({ data: [] as any[] }))
+
+      const orphanIds = dbFields.filter((f: any) => !localFieldIds.has(f.id)).map((f: any) => f.id)
+      if (orphanIds.length > 0) {
+        await Promise.all(
+          orphanIds.map((id: string) =>
+            fetch(`/api/forms/${formId}/fields/${id}`, { method: 'DELETE' })
+          )
+        )
+      }
+
+      // 4. Apply new IDs via functional update (never overwrites deletions)
       if (Object.keys(idMapping).length > 0) {
         setFields(prev => prev.map(f => {
           const saved = idMapping[f.id]
@@ -307,16 +333,25 @@ export default function FormEditorPage() {
       })
     }
 
-    // Delete from DB first
+    // Delete from DB FIRST and AWAIT confirmation
     if (!field._isNew) {
-      const res = await fetch(`/api/forms/${formId}/fields/${fieldId}`, { method: 'DELETE' })
-      if (!res.ok) {
-        console.error('Failed to delete field from DB')
+      try {
+        const res = await fetch(`/api/forms/${formId}/fields/${fieldId}`, { method: 'DELETE' })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          console.error('Delete failed:', err)
+          setSaveError(err.error || 'Erro ao excluir campo')
+          // Don't remove from UI if DB delete failed
+          return
+        }
+      } catch (err) {
+        console.error('Delete network error:', err)
+        setSaveError('Erro de conexão ao excluir campo')
         return
       }
     }
 
-    // Functional state update: guarantees we filter the LATEST state
+    // Only remove from state AFTER DB confirms deletion
     setFields(prev => {
       const updated = prev.filter((f) => f.id !== fieldId).map((f, i) => ({ ...f, order: i }))
       if (selectedFieldIdRef.current === fieldId) {

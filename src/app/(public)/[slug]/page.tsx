@@ -302,7 +302,6 @@ function PublicFormContent() {
           {/* Fallback thanks screen when no thanks field exists */}
           {completed && !currentField && (
             <div className="text-center">
-              <div className="text-5xl mb-4">🎉</div>
               <h1 className="text-3xl font-bold mb-3">Obrigado!</h1>
               <p className="text-lg text-gray-500">Suas respostas foram enviadas com sucesso.</p>
             </div>
@@ -330,7 +329,6 @@ function PublicFormContent() {
               {/* Thanks */}
               {currentField.type === 'thanks' && (
                 <div className="text-center">
-                  <div className="text-5xl mb-4">🎉</div>
                   <h1 className="text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
                     <p className="text-lg mb-6 whitespace-pre-line text-left " style={descStyle}>{currentField.description}</p>

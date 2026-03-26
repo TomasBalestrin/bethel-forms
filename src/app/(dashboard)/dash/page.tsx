@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, FileText, LogOut } from 'lucide-react'
+import { Plus, Search, FileText, LogOut, Link2, BarChart3, Copy } from 'lucide-react'
 
 interface FormItem {
   id: string
@@ -66,6 +66,17 @@ export default function DashboardPage() {
       console.error('Error creating form:', error)
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function duplicateForm(id: string) {
+    try {
+      const res = await fetch(`/api/forms/${id}/duplicate`, { method: 'POST' })
+      if (res.ok) {
+        fetchForms()
+      }
+    } catch (error) {
+      console.error('Error duplicating form:', error)
     }
   }
 
@@ -170,13 +181,12 @@ export default function DashboardPage() {
             {filteredForms.map((form) => {
               const responseCount = form._count?.responses || 0
               return (
-                <Link
+                <div
                   key={form.id}
-                  href={`/form/${form.id}/edit`}
                   className="flex items-center gap-5 p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all group"
                 >
-                  {/* Thumbnail */}
-                  <div className="w-28 h-20 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                  {/* Thumbnail — clickable */}
+                  <Link href={`/form/${form.id}/edit`} className="w-28 h-20 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex-shrink-0 flex items-center justify-center overflow-hidden">
                     <div className="text-center px-2">
                       <div className="w-8 h-0.5 bg-blue-400/60 rounded mb-1.5 mx-auto" />
                       <div className="w-16 h-0.5 bg-white/30 rounded mb-1" />
@@ -184,10 +194,10 @@ export default function DashboardPage() {
                       <div className="w-12 h-0.5 bg-white/15 rounded mb-2" />
                       <div className="w-10 h-2 bg-blue-500/40 rounded mx-auto" />
                     </div>
-                  </div>
+                  </Link>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
+                  {/* Info — clickable */}
+                  <Link href={`/form/${form.id}/edit`} className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors">
                       {form.name}
                     </h3>
@@ -196,6 +206,41 @@ export default function DashboardPage() {
                         ? `${responseCount} ${responseCount === 1 ? 'resposta' : 'respostas'}`
                         : 'Nenhuma resposta'}
                     </p>
+                  </Link>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigator.clipboard.writeText(`${window.location.origin}/${form.slug}`)
+                        const btn = e.currentTarget
+                        btn.title = 'Copiado!'
+                        setTimeout(() => { btn.title = 'Copiar link' }, 1500)
+                      }}
+                      title="Copiar link"
+                      className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
+                      <Link2 size={15} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        duplicateForm(form.id)
+                      }}
+                      title="Duplicar"
+                      className="p-2 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                    >
+                      <Copy size={15} />
+                    </button>
+                    <Link
+                      href={`/form/${form.id}/responses`}
+                      title="Ver respostas"
+                      className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <BarChart3 size={15} />
+                    </Link>
                   </div>
 
                   {/* Status */}
@@ -206,7 +251,7 @@ export default function DashboardPage() {
                       <Badge variant="secondary">Rascunho</Badge>
                     )}
                   </div>
-                </Link>
+                </div>
               )
             })}
           </div>

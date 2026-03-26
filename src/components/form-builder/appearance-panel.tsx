@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface AppearancePanelProps {
@@ -103,11 +103,39 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
               </button>
             </div>
           )}
-          <Input
-            value={appearance.logoUrl || ''}
-            onChange={(e) => updateAppearance('logoUrl', e.target.value)}
-            placeholder="https://exemplo.com/logo.png"
-          />
+          <div className="flex gap-2">
+            <Input
+              value={appearance.logoUrl || ''}
+              onChange={(e) => updateAppearance('logoUrl', e.target.value)}
+              placeholder="URL ou faça upload"
+              className="flex-1"
+            />
+            <label className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md cursor-pointer hover:bg-blue-100 transition-colors whitespace-nowrap">
+              <Upload size={12} />
+              Upload
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  if (file.size > 2 * 1024 * 1024) {
+                    alert('Imagem deve ter no máximo 2MB')
+                    return
+                  }
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    if (typeof reader.result === 'string') {
+                      updateAppearance('logoUrl', reader.result)
+                    }
+                  }
+                  reader.readAsDataURL(file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+          </div>
         </div>
 
         <div className="space-y-1.5">

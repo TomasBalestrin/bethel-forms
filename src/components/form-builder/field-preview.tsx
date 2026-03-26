@@ -3,11 +3,7 @@
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Hand,
-  Heart,
-  MessageSquare,
-} from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 
 interface FieldPreviewProps {
   field: any
@@ -58,7 +54,6 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
         {/* Welcome */}
         {field.type === 'welcome' && (
           <div className="text-center">
-            <Hand className="mx-auto mb-4 text-purple-500" size={48} />
             <h2 className="text-2xl font-bold mb-2" style={titleStyle}>{field.title || 'Bem-vindo!'}</h2>
             <p className="mb-6 whitespace-pre-line text-left" style={descStyle}>{field.description || 'Preencha o formulário'}</p>
             <button
@@ -206,7 +201,6 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
         {/* Thanks */}
         {field.type === 'thanks' && (
           <div className="text-center">
-            <Heart className="mx-auto mb-4 text-red-400" size={48} />
             <h2 className="text-2xl font-bold mb-2" style={titleStyle}>{field.title || 'Obrigado!'}</h2>
             {field.description && <p className="mb-4 whitespace-pre-line" style={descStyle}>{field.description}</p>}
             {settings.thanksType === 'redirect' && settings.buttonText && (
