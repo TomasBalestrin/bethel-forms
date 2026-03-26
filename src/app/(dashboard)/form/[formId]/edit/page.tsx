@@ -49,28 +49,36 @@ export default function FormEditorPage() {
   const [hasChanges, setHasChanges] = useState(false)
   const [publishError, setPublishError] = useState('')
 
-  // Refs that ALWAYS hold the latest values — synced inside setState, not useEffect
-  const formRef = useRef(form)
-  const fieldsRef = useRef(fields)
-  const originalFieldIdsRef = useRef(originalFieldIds)
+  // LIVE snapshot — updated SYNCHRONOUSLY, never depends on React render cycle
+  const live = useRef<{ form: any; fields: any[]; originalFieldIds: Set<string> }>({
+    form: null,
+    fields: [],
+    originalFieldIds: new Set(),
+  })
 
-  // Wrappers that sync ref immediately (not after paint like useEffect)
-  function setFormSynced(updater: any) {
-    setForm((prev: any) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater
-      formRef.current = next
-      return next
-    })
+  // Helper: update form state + live snapshot at the same time
+  function updateForm(updater: any) {
+    if (typeof updater === 'function') {
+      const next = updater(live.current.form)
+      live.current.form = next
+      setForm(next)
+    } else {
+      live.current.form = updater
+      setForm(updater)
+    }
   }
-  function setFieldsSynced(updater: any) {
-    setFields((prev: any[]) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater
-      fieldsRef.current = next
-      return next
-    })
+  function updateFields(updater: any) {
+    if (typeof updater === 'function') {
+      const next = updater(live.current.fields)
+      live.current.fields = next
+      setFields(next)
+    } else {
+      live.current.fields = updater
+      setFields(updater)
+    }
   }
-  function setOriginalFieldIdsSynced(val: Set<string>) {
-    originalFieldIdsRef.current = val
+  function updateOriginalFieldIds(val: Set<string>) {
+    live.current.originalFieldIds = val
     setOriginalFieldIds(val)
   }
 
@@ -99,9 +107,9 @@ export default function FormEditorPage() {
       const res = await fetch(`/api/forms/${formId}?t=${Date.now()}`, { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
-        setFormSynced(data)
-        setFieldsSynced(data.fields || [])
-        setOriginalFieldIdsSynced(new Set((data.fields || []).map((f: any) => f.id)))
+        updateForm(data)
+        updateFields(data.fields || [])
+        updateOriginalFieldIds(new Set((data.fields || []).map((f: any) => f.id)))
         setHasChanges(false)
         if (!selectedFieldId && data.fields?.length > 0) {
           setSelectedFieldId(data.fields[0].id)
@@ -143,7 +151,7 @@ export default function FormEditorPage() {
       conversionEvent: false,
     }
 
-    setFieldsSynced((prev: any[]) => {
+    updateFields((prev: any[]) => {
       const thanksIndex = prev.findIndex((f) => f.type === 'thanks')
       if (thanksIndex > -1 && type !== 'thanks') {
         const updated = [...prev]
@@ -160,7 +168,7 @@ export default function FormEditorPage() {
   }
 
   function updateField(fieldId: string, updates: any) {
-    setFieldsSynced((prev: any[]) => prev.map((f: any) => (f.id === fieldId ? { ...f, ...updates } : f)))
+    updateFields((prev: any[]) => prev.map((f: any) => (f.id === fieldId ? { ...f, ...updates } : f)))
     markChanged()
   }
 
@@ -169,7 +177,7 @@ export default function FormEditorPage() {
     if (!field) return
     if (field.type === 'welcome' || field.type === 'thanks') return
 
-    setFieldsSynced((prev: any[]) => {
+    updateFields((prev: any[]) => {
       const updated = prev.filter((f: any) => f.id !== fieldId).map((f: any, i: number) => ({ ...f, order: i }))
       if (selectedFieldId === fieldId) {
         setSelectedFieldId(updated[0]?.id || null)
@@ -180,7 +188,7 @@ export default function FormEditorPage() {
   }
 
   function moveField(fromIndex: number, toIndex: number) {
-    setFieldsSynced((prev: any[]) => {
+    updateFields((prev: any[]) => {
       if (toIndex < 0 || toIndex >= prev.length) return prev
       const updated = [...prev]
       const [moved] = updated.splice(fromIndex, 1)
@@ -198,10 +206,9 @@ export default function FormEditorPage() {
     setPublishing(true)
     setPublishError('')
 
-    // Read from REFS to guarantee we have the absolute latest values
-    const latestForm = formRef.current
-    const latestFields = fieldsRef.current
-    const latestOriginalIds = originalFieldIdsRef.current
+    // Read LIVE snapshot — always has the latest values, no React timing dependency
+    const latestForm = live.current.form
+    const latestFields = live.current.fields
 
     if (!latestForm) {
       setPublishError('Formulário não carregado')
@@ -219,7 +226,9 @@ export default function FormEditorPage() {
         slug: latestForm.settings?._slug || latestForm.slug,
         settings: latestForm.settings,
       }
-      console.log('[PUBLISH] Sending settings to API:', JSON.stringify(settingsPayload.settings?.appearance, null, 2))
+      console.log('[PUBLISH] Settings keys:', Object.keys(settingsPayload.settings || {}))
+      console.log('[PUBLISH] Appearance keys:', Object.keys(settingsPayload.settings?.appearance || {}))
+      console.log('[PUBLISH] Appearance:', JSON.stringify(settingsPayload.settings?.appearance))
 
       const formRes = await fetch(`/api/forms/${formId}`, {
         method: 'PUT',
@@ -277,7 +286,7 @@ export default function FormEditorPage() {
 
       // 4. Delete removed fields LAST (safe — creates/updates already succeeded)
       const currentFieldIds = new Set(latestFields.map((f: any) => f.id))
-      const deletedIds = Array.from(latestOriginalIds).filter(id => !currentFieldIds.has(id))
+      const deletedIds = Array.from(live.current.originalFieldIds).filter(id => !currentFieldIds.has(id))
       if (deletedIds.length > 0) {
         await Promise.all(
           deletedIds.map(id =>
@@ -299,9 +308,9 @@ export default function FormEditorPage() {
       const refreshRes = await fetch(`/api/forms/${formId}?t=${Date.now()}`, { cache: 'no-store' })
       if (refreshRes.ok) {
         const refreshed = await refreshRes.json()
-        setFormSynced(refreshed)
-        setFieldsSynced(refreshed.fields || [])
-        setOriginalFieldIdsSynced(new Set((refreshed.fields || []).map((f: any) => f.id)))
+        updateForm(refreshed)
+        updateFields(refreshed.fields || [])
+        updateOriginalFieldIds(new Set((refreshed.fields || []).map((f: any) => f.id)))
       }
 
       setHasChanges(false)
@@ -329,7 +338,7 @@ export default function FormEditorPage() {
         formId={formId}
         formName={form.name}
         onNameChange={(name) => {
-          setFormSynced((prev: any) => ({ ...prev, name }))
+          updateForm((prev: any) => ({ ...prev, name }))
           markChanged()
         }}
         formSlug={form.slug}
@@ -469,7 +478,7 @@ export default function FormEditorPage() {
               <AppearancePanel
                 settings={form.settings}
                 onUpdate={(partialSettings) => {
-                  setFormSynced((prev: any) => {
+                  updateForm((prev: any) => {
                     const prevSettings = prev.settings || {}
                     const merged = { ...prevSettings }
                     for (const key of Object.keys(partialSettings)) {
