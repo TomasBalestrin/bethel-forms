@@ -65,8 +65,8 @@ export function FormFieldInput({
           placeholder={field.placeholder || 'Digite sua resposta...'}
           maxLength={settings.maxLength || undefined}
           autoFocus
-          rows={5}
-          className="w-full bg-transparent border-2 border-gray-300 focus:border-blue-500 outline-none p-3 text-lg transition-colors rounded-lg resize-y custom-placeholder"
+          rows={3}
+          className="w-full bg-transparent border-2 border-gray-300 focus:border-blue-500 outline-none p-3 text-base sm:text-lg transition-colors rounded-lg resize-y custom-placeholder"
           style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
         />
       )}
@@ -81,7 +81,7 @@ export function FormFieldInput({
           placeholder={field.placeholder || 'Digite sua resposta...'}
           maxLength={settings.maxLength || undefined}
           autoFocus
-          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors custom-placeholder"
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-3 text-base sm:text-lg transition-colors custom-placeholder"
           style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
         />
       )}
@@ -95,7 +95,7 @@ export function FormFieldInput({
           onKeyDown={handleKeyDown}
           placeholder={field.placeholder || 'nome@email.com'}
           autoFocus
-          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors custom-placeholder"
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-3 text-base sm:text-lg transition-colors custom-placeholder"
           style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
         />
       )}
@@ -113,7 +113,7 @@ export function FormFieldInput({
           onKeyDown={handleKeyDown}
           placeholder={field.placeholder || '(11) 99999-9999'}
           autoFocus
-          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors custom-placeholder"
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-3 text-base sm:text-lg transition-colors custom-placeholder"
           style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
         />
       )}
@@ -144,7 +144,7 @@ export function FormFieldInput({
                   onChange(option.value || option.label)
                   setTimeout(onSubmit, 300)
                 }}
-                className="w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all"
+                className="w-full flex items-center gap-3 p-3.5 sm:p-4 rounded-xl text-left transition-all min-h-[48px]"
                 style={{
                   border: `2px solid ${isSelected ? primaryColor : optionColor}`,
                   backgroundColor: isSelected ? `${primaryColor}10` : 'transparent',
@@ -194,7 +194,7 @@ export function FormFieldInput({
       {/* Satisfaction Scale */}
       {field.type === 'satisfaction_scale' && (
         <div>
-          <div className="flex gap-2 justify-center flex-wrap my-4">
+          <div className="grid grid-cols-5 sm:grid-cols-6 md:flex md:flex-wrap md:justify-center gap-2 my-4">
             {Array.from(
               { length: (settings.scaleMax ?? 10) - (settings.scaleMin ?? 0) + 1 },
               (_, i) => (settings.scaleMin ?? 0) + i
@@ -206,7 +206,7 @@ export function FormFieldInput({
                   setTimeout(onSubmit, 300)
                 }}
                 className={cn(
-                  'w-12 h-12 rounded-lg border-2 text-sm font-bold transition-all',
+                  'h-11 sm:w-12 sm:h-12 rounded-lg border-2 text-sm font-bold transition-all',
                   value === num
                     ? 'text-white'
                     : 'border-gray-300 text-gray-600 hover:border-gray-400'

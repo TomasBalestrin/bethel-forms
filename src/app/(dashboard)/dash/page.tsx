@@ -134,14 +134,14 @@ export default function DashboardPage() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 py-10">
         {/* Search + Create */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <Input
               placeholder="Pesquisar formulário"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-11 h-11 bg-white border-gray-200 rounded-lg text-sm"
+              className="pl-11 h-11 bg-white border-gray-200 rounded-lg text-base sm:text-sm"
             />
           </div>
           <button
@@ -190,7 +190,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-5 p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all group"
                 >
                   {/* Thumbnail — clickable */}
-                  <Link href={`/form/${form.id}/edit`} className="w-28 h-20 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                  <Link href={`/form/${form.id}/edit`} className="hidden sm:flex w-28 h-20 rounded-lg bg-gradient-to-br from-gray-800 to-gray-900 flex-shrink-0 items-center justify-center overflow-hidden">
                     <div className="text-center px-2">
                       <div className="w-8 h-0.5 bg-blue-400/60 rounded mb-1.5 mx-auto" />
                       <div className="w-16 h-0.5 bg-white/30 rounded mb-1" />

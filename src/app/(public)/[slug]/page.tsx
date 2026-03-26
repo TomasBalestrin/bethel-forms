@@ -29,6 +29,7 @@ function PublicFormContent() {
   const [fieldError, setFieldError] = useState('')
   const [transitioning, setTransitioning] = useState(false)
   const [completed, setCompleted] = useState(false)
+  const transitionLock = useRef(false)
 
   useEffect(() => {
     loadForm()
@@ -133,25 +134,24 @@ function PublicFormContent() {
   }
 
   async function goNext() {
-    if (!currentField) return
+    if (!currentField || transitionLock.current) return
+    transitionLock.current = true
 
-    // Special handling for welcome screen
     if (currentField.type === 'welcome') {
-      startForm() // fire-and-forget, don't block transition
+      startForm()
       transition(currentIndex + 1)
       return
     }
 
-    // Validate
     const value = answers[currentField.id]
     const validationError = validateField(currentField, value)
     if (validationError) {
       setFieldError(validationError)
+      transitionLock.current = false
       return
     }
     setFieldError('')
 
-    // Save answer in background (don't block the transition)
     const rid = responseIdRef.current
     if (rid && !['welcome', 'thanks', 'message'].includes(currentField.type)) {
       const fieldToSave = currentField
@@ -183,22 +183,20 @@ function PublicFormContent() {
       })
     }
 
-    // Check if next is thanks or end of form (complete)
     const nextField = fields[currentIndex + 1]
     if (nextField?.type === 'thanks') {
-      completeForm() // fire-and-forget
+      completeForm()
       transition(currentIndex + 1)
       return
     }
 
-    // If there's no next field, complete and show a default thanks
     if (currentIndex + 1 >= fields.length) {
-      completeForm() // fire-and-forget
+      completeForm()
       setCompleted(true)
+      transitionLock.current = false
       return
     }
 
-    // Move to next field
     transition(currentIndex + 1)
   }
 
@@ -219,7 +217,8 @@ function PublicFormContent() {
   }
 
   function goPrev() {
-    if (currentIndex > 0) {
+    if (currentIndex > 0 && !transitionLock.current) {
+      transitionLock.current = true
       transition(currentIndex - 1)
     }
   }
@@ -230,6 +229,7 @@ function PublicFormContent() {
       setCurrentIndex(nextIndex)
       setFieldError('')
       setTransitioning(false)
+      transitionLock.current = false
     }, 120)
   }
 
@@ -243,7 +243,7 @@ function PublicFormContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">404</h1>
           <p className="text-gray-500">{error}</p>
@@ -286,24 +286,24 @@ function PublicFormContent() {
 
       {/* Logo */}
       {appearance.logoUrl && (
-        <div className="absolute top-4 left-4">
-          <img src={appearance.logoUrl} alt="" className="h-8" />
+        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10">
+          <img src={appearance.logoUrl} alt="Logo" className="h-6 sm:h-8 max-w-[100px] sm:max-w-[140px] object-contain" />
         </div>
       )}
 
       {/* Main Content */}
       <div
         className={cn(
-          'flex-1 flex items-center justify-center px-4 py-16 transition-opacity duration-[120ms]',
+          'flex-1 flex items-center justify-center px-5 sm:px-8 py-12 sm:py-16 transition-opacity duration-[120ms]',
           transitioning ? 'opacity-0' : 'opacity-100'
         )}
       >
         <div className="w-full max-w-xl">
-          {/* Fallback thanks screen when no thanks field exists */}
+          {/* Fallback thanks screen */}
           {completed && !currentField && (
             <div className="text-center">
-              <h1 className="text-3xl font-bold mb-3">Obrigado!</h1>
-              <p className="text-lg text-gray-500">Suas respostas foram enviadas com sucesso.</p>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-3">Obrigado!</h1>
+              <p className="text-base sm:text-lg text-gray-500">Suas respostas foram enviadas com sucesso.</p>
             </div>
           )}
 
@@ -312,13 +312,13 @@ function PublicFormContent() {
               {/* Welcome */}
               {currentField.type === 'welcome' && (
                 <div className="text-center">
-                  <h1 className="text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-lg mb-8 whitespace-pre-line text-left " style={descStyle}>{currentField.description}</p>
+                    <p className="text-base sm:text-lg mb-6 sm:mb-8 whitespace-pre-line text-left" style={descStyle}>{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
-                    className="px-8 py-3 rounded-lg text-white font-medium text-lg"
+                    className="w-full sm:w-auto px-8 py-3.5 sm:py-3 rounded-lg text-white font-medium text-base sm:text-lg min-h-[48px]"
                     style={{ backgroundColor: primaryColor }}
                   >
                     Começar
@@ -329,15 +329,15 @@ function PublicFormContent() {
               {/* Thanks */}
               {currentField.type === 'thanks' && (
                 <div className="text-center">
-                  <h1 className="text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="text-lg mb-6 whitespace-pre-line text-left " style={descStyle}>{currentField.description}</p>
+                    <p className="text-base sm:text-lg mb-6 whitespace-pre-line text-left" style={descStyle}>{currentField.description}</p>
                   )}
                   {currentField.settings?.thanksType === 'redirect' && currentField.settings?.redirectUrl && /^https?:\/\//.test(currentField.settings.redirectUrl) && (
                     <a
                       href={currentField.settings.redirectUrl}
                       rel="noopener noreferrer"
-                      className="inline-block px-6 py-2.5 rounded-lg text-white font-medium"
+                      className="inline-block px-6 py-3 rounded-lg text-white font-medium min-h-[48px]"
                       style={{ backgroundColor: primaryColor }}
                     >
                       {currentField.settings.buttonText || 'Continuar'}
@@ -349,13 +349,13 @@ function PublicFormContent() {
               {/* Message */}
               {currentField.type === 'message' && (
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold mb-3" style={titleStyle}>{currentField.title}</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold mb-3" style={titleStyle}>{currentField.title}</h2>
                   {currentField.description && (
-                    <p className="mb-6 whitespace-pre-line " style={descStyle}>{currentField.description}</p>
+                    <p className="mb-6 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
                   )}
                   <button
                     onClick={goNext}
-                    className="px-6 py-2.5 rounded-lg text-white font-medium"
+                    className="w-full sm:w-auto px-6 py-3 rounded-lg text-white font-medium min-h-[48px]"
                     style={{ backgroundColor: primaryColor }}
                   >
                     Continuar
@@ -366,12 +366,12 @@ function PublicFormContent() {
               {/* Input fields */}
               {!['welcome', 'thanks', 'message'].includes(currentField.type) && (
                 <div>
-                  <h2 className="text-2xl font-semibold mb-1" style={titleStyle}>
+                  <h2 className="text-xl sm:text-2xl font-semibold mb-1" style={titleStyle}>
                     {currentField.title}
                     {currentField.required && <span className="text-red-500 ml-1">*</span>}
                   </h2>
                   {currentField.description && (
-                    <p className="mb-6 whitespace-pre-line " style={descStyle}>{currentField.description}</p>
+                    <p className="mb-4 sm:mb-6 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
                   )}
 
                   <FormFieldInput
@@ -387,17 +387,14 @@ function PublicFormContent() {
                     appearance={appearance}
                   />
 
-                  <div className="mt-8 flex items-center gap-3">
+                  <div className="mt-6 sm:mt-8">
                     <button
                       onClick={goNext}
-                      className="px-6 py-2.5 rounded-lg text-white font-medium text-sm"
+                      className="w-full sm:w-auto px-6 py-3 rounded-lg text-white font-medium text-sm min-h-[48px]"
                       style={{ backgroundColor: primaryColor }}
                     >
                       OK ✓
                     </button>
-                    <span className="text-xs text-gray-400">
-                      pressione <strong>Enter ↵</strong>
-                    </span>
                   </div>
                 </div>
               )}
@@ -406,19 +403,19 @@ function PublicFormContent() {
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation — mobile: bottom bar, desktop: bottom-right */}
       {currentField?.type !== 'welcome' && currentField?.type !== 'thanks' && (
-        <div className="fixed bottom-4 right-4 flex gap-2">
+        <div className="fixed bottom-4 right-4 flex gap-2 z-40">
           <button
             onClick={goPrev}
             disabled={currentIndex === 0}
-            className="w-10 h-10 rounded-lg bg-white shadow border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+            className="w-11 h-11 sm:w-10 sm:h-10 rounded-lg bg-white shadow border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30"
           >
             ↑
           </button>
           <button
             onClick={goNext}
-            className="w-10 h-10 rounded-lg bg-white shadow border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
+            className="w-11 h-11 sm:w-10 sm:h-10 rounded-lg bg-white shadow border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
           >
             ↓
           </button>

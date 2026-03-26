@@ -292,9 +292,9 @@ export default function ResponsesPage() {
 
       {/* Individual View */}
       {view === 'individual' && (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col sm:flex-row flex-1 overflow-hidden">
           {/* Left list */}
-          <div className="w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
+          <div className="w-full sm:w-80 bg-white border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
             <div className="px-4 py-3 border-b border-gray-100">
               <p className="text-sm font-medium text-gray-700">
                 {pagination.total} {pagination.total === 1 ? 'resposta' : 'respostas'}.
