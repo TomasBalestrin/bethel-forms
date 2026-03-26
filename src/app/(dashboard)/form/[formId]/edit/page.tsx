@@ -176,7 +176,22 @@ export default function FormEditorPage() {
         )
       }
 
-      // 3. Apply new IDs via functional update (never overwrites deletions)
+      // 3. Sync: delete any DB fields that are NOT in local state (orphan cleanup)
+      const localFieldIds = new Set(fieldsRef.current.filter((f: any) => !f._isNew).map((f: any) => f.id))
+      const { data: dbFields } = await fetch(`/api/forms/${formId}`, {
+        headers: { 'Content-Type': 'application/json' },
+      }).then(r => r.json()).then(d => ({ data: d.fields || [] })).catch(() => ({ data: [] }))
+
+      const orphanIds = (dbFields as any[]).filter((f: any) => !localFieldIds.has(f.id)).map((f: any) => f.id)
+      if (orphanIds.length > 0) {
+        await Promise.all(
+          orphanIds.map((id: string) =>
+            fetch(`/api/forms/${formId}/fields/${id}`, { method: 'DELETE' })
+          )
+        )
+      }
+
+      // 4. Apply new IDs via functional update (never overwrites deletions)
       if (Object.keys(idMapping).length > 0) {
         setFields(prev => prev.map(f => {
           const saved = idMapping[f.id]
@@ -307,16 +322,7 @@ export default function FormEditorPage() {
       })
     }
 
-    // Delete from DB first
-    if (!field._isNew) {
-      const res = await fetch(`/api/forms/${formId}/fields/${fieldId}`, { method: 'DELETE' })
-      if (!res.ok) {
-        console.error('Failed to delete field from DB')
-        return
-      }
-    }
-
-    // Functional state update: guarantees we filter the LATEST state
+    // Remove from local state FIRST (immediate UI feedback)
     setFields(prev => {
       const updated = prev.filter((f) => f.id !== fieldId).map((f, i) => ({ ...f, order: i }))
       if (selectedFieldIdRef.current === fieldId) {
@@ -324,6 +330,12 @@ export default function FormEditorPage() {
       }
       return updated
     })
+
+    // Then delete from DB (the sync step in saveForm will catch any failures)
+    if (!field._isNew) {
+      fetch(`/api/forms/${formId}/fields/${fieldId}`, { method: 'DELETE' })
+        .catch(err => console.error('Delete API error:', err))
+    }
   }
 
   function moveField(fromIndex: number, toIndex: number) {

@@ -98,6 +98,18 @@ export async function DELETE(
       return NextResponse.json({ error: 'Erro ao excluir campo' }, { status: 500 })
     }
 
+    // Verify deletion actually happened
+    const { data: stillExists } = await supabaseAdmin
+      .from('form_fields')
+      .select('id')
+      .eq('id', params.fieldId)
+      .maybeSingle()
+
+    if (stillExists) {
+      console.error('Field still exists after delete attempt:', params.fieldId)
+      return NextResponse.json({ error: 'Erro ao excluir campo' }, { status: 500 })
+    }
+
     // Renumber remaining fields to close order gaps
     const { data: remaining } = await supabaseAdmin
       .from('form_fields')
