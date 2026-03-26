@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,7 @@ export function FormTopBar({
 }: FormTopBarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const [copied, setCopied] = useState(false)
 
   const activeTab = tabs.find((t) => pathname.includes(t.path))?.path || 'edit'
 
@@ -98,10 +100,18 @@ export function FormTopBar({
             onClick={() => {
               const url = `${window.location.origin}/${formSlug}`
               navigator.clipboard.writeText(url)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 2000)
             }}
-            className="p-1.5 text-gray-500 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border transition-colors',
+              copied
+                ? 'text-green-600 border-green-200 bg-green-50'
+                : 'text-gray-500 border-gray-200 hover:bg-gray-50'
+            )}
           >
-            <Share2 size={14} />
+            {copied ? <Check size={14} /> : <Share2 size={14} />}
+            {copied ? 'Copiado!' : ''}
           </button>
         )}
         {formStatus === 'published' && (
