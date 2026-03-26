@@ -24,6 +24,8 @@ export async function GET(
     const settings = form.settings as any
     const publishedVersion = form.published_version as any
 
+    console.log('[GET /api/public/forms] DB appearance:', JSON.stringify(settings?.appearance))
+
     // Use published version if available, otherwise load draft fields for preview
     let fields: any[] = []
     if (publishedVersion?.fields) {
@@ -59,6 +61,12 @@ export async function GET(
       tracking: settings?.tracking || {},
       language: settings?.language || 'pt-BR',
       seo: settings?.seo || {},
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
     })
   } catch (error) {
     console.error('GET /api/public/forms/[slug] error:', error)

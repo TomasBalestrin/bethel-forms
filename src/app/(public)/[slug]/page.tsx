@@ -37,7 +37,7 @@ function PublicFormContent() {
 
   async function loadForm() {
     try {
-      const res = await fetch(`/api/public/forms/${slug}`)
+      const res = await fetch(`/api/public/forms/${slug}?t=${Date.now()}`, { cache: 'no-store' })
       if (!res.ok) {
         setError('Formulário não encontrado')
         setLoading(false)

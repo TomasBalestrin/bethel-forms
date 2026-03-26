@@ -96,7 +96,7 @@ export default function FormEditorPage() {
 
   async function fetchForm() {
     try {
-      const res = await fetch(`/api/forms/${formId}`)
+      const res = await fetch(`/api/forms/${formId}?t=${Date.now()}`, { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
         setFormSynced(data)
@@ -214,14 +214,17 @@ export default function FormEditorPage() {
 
     try {
       // 1. Save form settings
+      const settingsPayload = {
+        name: latestForm.name,
+        slug: latestForm.settings?._slug || latestForm.slug,
+        settings: latestForm.settings,
+      }
+      console.log('[PUBLISH] Sending settings to API:', JSON.stringify(settingsPayload.settings?.appearance, null, 2))
+
       const formRes = await fetch(`/api/forms/${formId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: latestForm.name,
-          slug: latestForm.settings?._slug || latestForm.slug,
-          settings: latestForm.settings,
-        }),
+        body: JSON.stringify(settingsPayload),
       })
       if (!formRes.ok) {
         const err = await formRes.json().catch(() => ({}))
@@ -293,7 +296,7 @@ export default function FormEditorPage() {
       }
 
       // 6. Refresh from server (canonical state)
-      const refreshRes = await fetch(`/api/forms/${formId}`)
+      const refreshRes = await fetch(`/api/forms/${formId}?t=${Date.now()}`, { cache: 'no-store' })
       if (refreshRes.ok) {
         const refreshed = await refreshRes.json()
         setFormSynced(refreshed)
