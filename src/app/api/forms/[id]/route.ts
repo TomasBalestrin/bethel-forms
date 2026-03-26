@@ -56,6 +56,10 @@ export async function GET(
       updatedAt: form.updated_at,
       fields,
       _count: { responses: form.responses?.[0]?.count ?? 0 },
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
     })
   } catch (error) {
     console.error('GET /api/forms/[id] error:', error)
@@ -83,6 +87,8 @@ export async function PUT(
     }
 
     const data = await request.json()
+
+    console.log('[PUT /api/forms] Received appearance:', JSON.stringify(data.settings?.appearance))
 
     const updateData: any = {
       updated_at: new Date().toISOString(),
