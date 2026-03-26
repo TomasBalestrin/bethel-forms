@@ -49,6 +49,31 @@ export default function FormEditorPage() {
   const [hasChanges, setHasChanges] = useState(false)
   const [publishError, setPublishError] = useState('')
 
+  // Refs that ALWAYS hold the latest values — synced inside setState, not useEffect
+  const formRef = useRef(form)
+  const fieldsRef = useRef(fields)
+  const originalFieldIdsRef = useRef(originalFieldIds)
+
+  // Wrappers that sync ref immediately (not after paint like useEffect)
+  function setFormSynced(updater: any) {
+    setForm((prev: any) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      formRef.current = next
+      return next
+    })
+  }
+  function setFieldsSynced(updater: any) {
+    setFields((prev: any[]) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      fieldsRef.current = next
+      return next
+    })
+  }
+  function setOriginalFieldIdsSynced(val: Set<string>) {
+    originalFieldIdsRef.current = val
+    setOriginalFieldIds(val)
+  }
+
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
   }, [authStatus, router])
@@ -74,9 +99,9 @@ export default function FormEditorPage() {
       const res = await fetch(`/api/forms/${formId}`)
       if (res.ok) {
         const data = await res.json()
-        setForm(data)
-        setFields(data.fields || [])
-        setOriginalFieldIds(new Set((data.fields || []).map((f: any) => f.id)))
+        setFormSynced(data)
+        setFieldsSynced(data.fields || [])
+        setOriginalFieldIdsSynced(new Set((data.fields || []).map((f: any) => f.id)))
         setHasChanges(false)
         if (!selectedFieldId && data.fields?.length > 0) {
           setSelectedFieldId(data.fields[0].id)
@@ -118,7 +143,7 @@ export default function FormEditorPage() {
       conversionEvent: false,
     }
 
-    setFields(prev => {
+    setFieldsSynced((prev: any[]) => {
       const thanksIndex = prev.findIndex((f) => f.type === 'thanks')
       if (thanksIndex > -1 && type !== 'thanks') {
         const updated = [...prev]
@@ -135,7 +160,7 @@ export default function FormEditorPage() {
   }
 
   function updateField(fieldId: string, updates: any) {
-    setFields(prev => prev.map((f) => (f.id === fieldId ? { ...f, ...updates } : f)))
+    setFieldsSynced((prev: any[]) => prev.map((f: any) => (f.id === fieldId ? { ...f, ...updates } : f)))
     markChanged()
   }
 
@@ -144,8 +169,8 @@ export default function FormEditorPage() {
     if (!field) return
     if (field.type === 'welcome' || field.type === 'thanks') return
 
-    setFields(prev => {
-      const updated = prev.filter((f) => f.id !== fieldId).map((f, i) => ({ ...f, order: i }))
+    setFieldsSynced((prev: any[]) => {
+      const updated = prev.filter((f: any) => f.id !== fieldId).map((f: any, i: number) => ({ ...f, order: i }))
       if (selectedFieldId === fieldId) {
         setSelectedFieldId(updated[0]?.id || null)
       }
@@ -155,12 +180,12 @@ export default function FormEditorPage() {
   }
 
   function moveField(fromIndex: number, toIndex: number) {
-    setFields(prev => {
+    setFieldsSynced((prev: any[]) => {
       if (toIndex < 0 || toIndex >= prev.length) return prev
       const updated = [...prev]
       const [moved] = updated.splice(fromIndex, 1)
       updated.splice(toIndex, 0, moved)
-      return updated.map((f, i) => ({ ...f, order: i }))
+      return updated.map((f: any, i: number) => ({ ...f, order: i }))
     })
     markChanged()
   }
@@ -173,8 +198,19 @@ export default function FormEditorPage() {
     setPublishing(true)
     setPublishError('')
 
-    // Build ordered list with explicit order index (avoids indexOf fragility)
-    const orderedFields = fields.map((f, i) => ({ ...f, order: i }))
+    // Read from REFS to guarantee we have the absolute latest values
+    const latestForm = formRef.current
+    const latestFields = fieldsRef.current
+    const latestOriginalIds = originalFieldIdsRef.current
+
+    if (!latestForm) {
+      setPublishError('Formulário não carregado')
+      setPublishing(false)
+      return
+    }
+
+    // Build ordered list with explicit order index
+    const orderedFields = latestFields.map((f: any, i: number) => ({ ...f, order: i }))
 
     try {
       // 1. Save form settings
@@ -182,9 +218,9 @@ export default function FormEditorPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: form.name,
-          slug: form.settings?._slug || form.slug,
-          settings: form.settings,
+          name: latestForm.name,
+          slug: latestForm.settings?._slug || latestForm.slug,
+          settings: latestForm.settings,
         }),
       })
       if (!formRes.ok) {
@@ -237,8 +273,8 @@ export default function FormEditorPage() {
       }
 
       // 4. Delete removed fields LAST (safe — creates/updates already succeeded)
-      const currentFieldIds = new Set(fields.map(f => f.id))
-      const deletedIds = Array.from(originalFieldIds).filter(id => !currentFieldIds.has(id))
+      const currentFieldIds = new Set(latestFields.map((f: any) => f.id))
+      const deletedIds = Array.from(latestOriginalIds).filter(id => !currentFieldIds.has(id))
       if (deletedIds.length > 0) {
         await Promise.all(
           deletedIds.map(id =>
@@ -260,9 +296,9 @@ export default function FormEditorPage() {
       const refreshRes = await fetch(`/api/forms/${formId}`)
       if (refreshRes.ok) {
         const refreshed = await refreshRes.json()
-        setForm(refreshed)
-        setFields(refreshed.fields || [])
-        setOriginalFieldIds(new Set((refreshed.fields || []).map((f: any) => f.id)))
+        setFormSynced(refreshed)
+        setFieldsSynced(refreshed.fields || [])
+        setOriginalFieldIdsSynced(new Set((refreshed.fields || []).map((f: any) => f.id)))
       }
 
       setHasChanges(false)
@@ -290,7 +326,7 @@ export default function FormEditorPage() {
         formId={formId}
         formName={form.name}
         onNameChange={(name) => {
-          setForm((prev: any) => ({ ...prev, name }))
+          setFormSynced((prev: any) => ({ ...prev, name }))
           markChanged()
         }}
         formSlug={form.slug}
@@ -430,7 +466,7 @@ export default function FormEditorPage() {
               <AppearancePanel
                 settings={form.settings}
                 onUpdate={(partialSettings) => {
-                  setForm((prev: any) => {
+                  setFormSynced((prev: any) => {
                     const prevSettings = prev.settings || {}
                     const merged = { ...prevSettings }
                     for (const key of Object.keys(partialSettings)) {
