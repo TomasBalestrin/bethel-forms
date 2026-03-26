@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, FileText, LogOut, Link2, BarChart3, Copy } from 'lucide-react'
+import { Plus, Search, FileText, LogOut, Link2, BarChart3, Copy, Trash2 } from 'lucide-react'
 
 interface FormItem {
   id: string
@@ -81,14 +81,18 @@ export default function DashboardPage() {
   }
 
   async function deleteForm(id: string) {
-    if (!confirm('Tem certeza que deseja excluir este formulário?')) return
+    if (!confirm('Tem certeza que deseja excluir este formulário? Todas as respostas serão perdidas.')) return
     try {
       const res = await fetch(`/api/forms/${id}`, { method: 'DELETE' })
       if (res.ok) {
-        setForms(forms.filter((f) => f.id !== id))
+        setForms(prev => prev.filter((f) => f.id !== id))
+      } else {
+        const err = await res.json().catch(() => ({}))
+        alert(err.error || 'Erro ao excluir formulário')
       }
     } catch (error) {
       console.error('Error deleting form:', error)
+      alert('Erro de conexão ao excluir formulário')
     }
   }
 
@@ -241,6 +245,16 @@ export default function DashboardPage() {
                     >
                       <BarChart3 size={15} />
                     </Link>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteForm(form.id)
+                      }}
+                      title="Excluir formulário"
+                      className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
 
                   {/* Status */}
