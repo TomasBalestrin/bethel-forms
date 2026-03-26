@@ -49,6 +49,14 @@ export default function FormEditorPage() {
   const [hasChanges, setHasChanges] = useState(false)
   const [publishError, setPublishError] = useState('')
 
+  // Refs that ALWAYS hold the latest values — publishForm reads from these
+  const formRef = useRef(form)
+  const fieldsRef = useRef(fields)
+  const originalFieldIdsRef = useRef(originalFieldIds)
+  useEffect(() => { formRef.current = form }, [form])
+  useEffect(() => { fieldsRef.current = fields }, [fields])
+  useEffect(() => { originalFieldIdsRef.current = originalFieldIds }, [originalFieldIds])
+
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
   }, [authStatus, router])
@@ -173,8 +181,19 @@ export default function FormEditorPage() {
     setPublishing(true)
     setPublishError('')
 
-    // Build ordered list with explicit order index (avoids indexOf fragility)
-    const orderedFields = fields.map((f, i) => ({ ...f, order: i }))
+    // Read from REFS to guarantee we have the absolute latest values
+    const latestForm = formRef.current
+    const latestFields = fieldsRef.current
+    const latestOriginalIds = originalFieldIdsRef.current
+
+    if (!latestForm) {
+      setPublishError('Formulário não carregado')
+      setPublishing(false)
+      return
+    }
+
+    // Build ordered list with explicit order index
+    const orderedFields = latestFields.map((f: any, i: number) => ({ ...f, order: i }))
 
     try {
       // 1. Save form settings
@@ -182,9 +201,9 @@ export default function FormEditorPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: form.name,
-          slug: form.settings?._slug || form.slug,
-          settings: form.settings,
+          name: latestForm.name,
+          slug: latestForm.settings?._slug || latestForm.slug,
+          settings: latestForm.settings,
         }),
       })
       if (!formRes.ok) {
@@ -237,8 +256,8 @@ export default function FormEditorPage() {
       }
 
       // 4. Delete removed fields LAST (safe — creates/updates already succeeded)
-      const currentFieldIds = new Set(fields.map(f => f.id))
-      const deletedIds = Array.from(originalFieldIds).filter(id => !currentFieldIds.has(id))
+      const currentFieldIds = new Set(latestFields.map((f: any) => f.id))
+      const deletedIds = Array.from(latestOriginalIds).filter(id => !currentFieldIds.has(id))
       if (deletedIds.length > 0) {
         await Promise.all(
           deletedIds.map(id =>
