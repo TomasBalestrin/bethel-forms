@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, FileText, LogOut, Link2, BarChart3 } from 'lucide-react'
+import { Plus, Search, FileText, LogOut, Link2, BarChart3, Copy } from 'lucide-react'
 
 interface FormItem {
   id: string
@@ -66,6 +66,17 @@ export default function DashboardPage() {
       console.error('Error creating form:', error)
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function duplicateForm(id: string) {
+    try {
+      const res = await fetch(`/api/forms/${id}/duplicate`, { method: 'POST' })
+      if (res.ok) {
+        fetchForms()
+      }
+    } catch (error) {
+      console.error('Error duplicating form:', error)
     }
   }
 
@@ -211,6 +222,16 @@ export default function DashboardPage() {
                       className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                     >
                       <Link2 size={15} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        duplicateForm(form.id)
+                      }}
+                      title="Duplicar"
+                      className="p-2 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                    >
+                      <Copy size={15} />
                     </button>
                     <Link
                       href={`/form/${form.id}/responses`}
