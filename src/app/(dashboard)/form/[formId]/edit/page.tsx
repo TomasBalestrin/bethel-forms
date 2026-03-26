@@ -429,8 +429,19 @@ export default function FormEditorPage() {
             ) : (
               <AppearancePanel
                 settings={form.settings}
-                onUpdate={(newSettings) => {
-                  setForm((prev: any) => ({ ...prev, settings: newSettings }))
+                onUpdate={(partialSettings) => {
+                  setForm((prev: any) => {
+                    const prevSettings = prev.settings || {}
+                    const merged = { ...prevSettings }
+                    for (const key of Object.keys(partialSettings)) {
+                      if (typeof partialSettings[key] === 'object' && partialSettings[key] !== null && !Array.isArray(partialSettings[key])) {
+                        merged[key] = { ...prevSettings[key], ...partialSettings[key] }
+                      } else {
+                        merged[key] = partialSettings[key]
+                      }
+                    }
+                    return { ...prev, settings: merged }
+                  })
                   markChanged()
                 }}
               />

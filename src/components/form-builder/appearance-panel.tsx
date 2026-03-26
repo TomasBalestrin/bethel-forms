@@ -65,11 +65,9 @@ function ColorRow({ label, value, onChange, hint }: { label: string; value: stri
 export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
   const appearance = settings?.appearance || {}
 
+  // Send ONLY the changed key — the parent deep-merges into latest state
   function updateAppearance(key: string, value: any) {
-    onUpdate({
-      ...settings,
-      appearance: { ...appearance, [key]: value },
-    })
+    onUpdate({ appearance: { [key]: value } })
   }
 
   return (
@@ -265,7 +263,7 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
           <Input
             value={settings?.tracking?.pixelId || ''}
             onChange={(e) =>
-              onUpdate({ ...settings, tracking: { ...settings?.tracking, pixelId: e.target.value } })
+              onUpdate({ tracking: { pixelId: e.target.value } })
             }
             placeholder="Ex: 123456789012345"
           />
@@ -276,7 +274,7 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
           <Input
             value={settings?.tracking?.gaId || ''}
             onChange={(e) =>
-              onUpdate({ ...settings, tracking: { ...settings?.tracking, gaId: e.target.value } })
+              onUpdate({ tracking: { gaId: e.target.value } })
             }
             placeholder="Ex: G-XXXXXXXXXX"
           />
@@ -286,7 +284,7 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
           <Label>Capturar UTMs</Label>
           <button
             onClick={() =>
-              onUpdate({ ...settings, tracking: { ...settings?.tracking, utmEnabled: !settings?.tracking?.utmEnabled } })
+              onUpdate({ tracking: { utmEnabled: !settings?.tracking?.utmEnabled } })
             }
             className={`relative w-11 h-6 rounded-full transition-colors ${
               settings?.tracking?.utmEnabled ? 'bg-blue-600' : 'bg-gray-300'
@@ -310,7 +308,7 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
             <Input
               value={settings?._slug || ''}
               onChange={(e) =>
-                onUpdate({ ...settings, _slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })
+                onUpdate({ _slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })
               }
               placeholder="meu-formulario"
             />
