@@ -51,10 +51,18 @@ export function ColorTagPicker({ color, onChange }: ColorTagPickerProps) {
 
       {open && (
         <div
-          className="absolute left-0 top-full mt-1 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-2"
+          className="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-200 p-3"
+          style={{ width: 220 }}
+          ref={(el) => {
+            if (el && ref.current) {
+              const trigger = ref.current.getBoundingClientRect()
+              el.style.top = `${trigger.bottom + 6}px`
+              el.style.left = `${trigger.left}px`
+            }
+          }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="grid grid-cols-6 gap-1.5">
+          <div className="grid grid-cols-6 gap-2 place-items-center">
             {COLORS.map((c) => (
               <button
                 key={c}
@@ -63,7 +71,7 @@ export function ColorTagPicker({ color, onChange }: ColorTagPickerProps) {
                   onChange(c)
                   setOpen(false)
                 }}
-                className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
+                className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 cursor-pointer"
                 style={{
                   backgroundColor: c,
                   borderColor: color === c ? '#1f2937' : 'transparent',
@@ -72,16 +80,16 @@ export function ColorTagPicker({ color, onChange }: ColorTagPickerProps) {
             ))}
           </div>
           {color && (
-            <div className="flex justify-end mt-2 pt-1.5 border-t border-gray-100">
+            <div className="flex justify-end mt-2 pt-2 border-t border-gray-100">
               <button
                 type="button"
                 onClick={() => {
                   onChange(null)
                   setOpen(false)
                 }}
-                className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
               >
-                <Trash2 size={14} />
+                <Trash2 size={15} />
               </button>
             </div>
           )}
