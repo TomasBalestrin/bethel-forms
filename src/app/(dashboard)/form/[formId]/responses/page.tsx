@@ -17,6 +17,7 @@ import {
   Phone,
   Mail,
 } from 'lucide-react'
+import { ColorTagPicker } from '@/components/dashboard/color-tag-picker'
 
 export default function ResponsesPage() {
   const params = useParams()
@@ -209,6 +210,7 @@ export default function ResponsesPage() {
             <thead className="sticky top-0 z-10">
               <tr className="border-b border-gray-200 bg-white">
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 w-12">#</th>
+                <th className="w-10 px-1"></th>
                 {fields.map((f: any, i: number) => (
                   <th key={f.id} className="text-left px-4 py-3 text-xs font-medium text-gray-500 whitespace-nowrap">
                     {i + 1}.{f.title || f.type}
@@ -219,13 +221,13 @@ export default function ResponsesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={fields.length + 1} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 2} className="text-center py-16 text-gray-400 text-sm">
                     Carregando...
                   </td>
                 </tr>
               ) : responses.length === 0 ? (
                 <tr>
-                  <td colSpan={fields.length + 1} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 2} className="text-center py-16 text-gray-400 text-sm">
                     Nenhuma resposta ainda
                   </td>
                 </tr>
@@ -238,6 +240,27 @@ export default function ResponsesPage() {
                   >
                     <td className="px-4 py-3 text-xs text-gray-400 font-medium">
                       {pagination.total - ((pagination.page - 1) * 50 + idx)}
+                    </td>
+                    <td className="px-1 py-3">
+                      <ColorTagPicker
+                        color={response.tags?.[0] || null}
+                        onChange={async (color) => {
+                          const prev = [...responses]
+                          setResponses(responses.map((r: any) =>
+                            r.id === response.id ? { ...r, tags: color ? [color] : [] } : r
+                          ))
+                          try {
+                            const res = await fetch(`/api/forms/${formId}/responses/${response.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ color }),
+                            })
+                            if (!res.ok) setResponses(prev)
+                          } catch {
+                            setResponses(prev)
+                          }
+                        }}
+                      />
                     </td>
                     {fields.map((f: any) => {
                       const val = getAnswerValue(response, f.id)

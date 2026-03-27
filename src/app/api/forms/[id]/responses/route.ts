@@ -51,6 +51,7 @@ export async function GET(
       formId: r.form_id,
       status: r.status,
       metadata: r.metadata,
+      tags: r.tags || [],
       createdAt: r.created_at,
       completedAt: r.completed_at,
       durationSeconds: r.duration_seconds,
