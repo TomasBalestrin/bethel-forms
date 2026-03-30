@@ -66,13 +66,32 @@ export async function POST(
       insertOrder = allFields.length
     }
 
+    const DEFAULT_TITLES: Record<string, string> = {
+      short_text: 'Sua resposta',
+      long_text: 'Sua resposta',
+      email: 'Seu email',
+      phone: 'Seu telefone',
+      number: 'Número',
+      cpf: 'Seu CPF',
+      multiple_choice: 'Escolha uma opção',
+      checkbox: 'Selecione as opções',
+      satisfaction_scale: 'Sua avaliação',
+      date: 'Data',
+      url: 'URL',
+      currency: 'Valor',
+      file_upload: 'Envie seu arquivo',
+      welcome: 'Bem-vindo!',
+      thanks: 'Obrigado!',
+      message: 'Mensagem',
+    }
+
     const { data: field, error } = await supabaseAdmin
       .from('form_fields')
       .insert({
         form_id: params.id,
         type: data.type,
         order: insertOrder,
-        title: data.title || '',
+        title: data.title || DEFAULT_TITLES[data.type] || '',
         description: data.description || '',
         required: data.required ?? false,
         placeholder: data.placeholder || '',
