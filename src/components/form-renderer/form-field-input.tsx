@@ -48,6 +48,14 @@ export function FormFieldInput({
     return d
   }
 
+  function formatCpf(digits: string): string {
+    const d = digits.replace(/\D/g, '')
+    if (d.length > 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+    if (d.length > 6) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
+    if (d.length > 3) return `${d.slice(0, 3)}.${d.slice(3)}`
+    return d
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -129,6 +137,25 @@ export function FormFieldInput({
           autoFocus
           className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-lg transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none custom-placeholder"
           style={{ ...inputStyle, borderColor: value !== undefined && value !== '' ? primaryColor : undefined }}
+        />
+      )}
+
+      {/* CPF */}
+      {field.type === 'cpf' && (
+        <input
+          type="text"
+          inputMode="numeric"
+          value={formatCpf(value || '')}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, '').slice(0, 11)
+            onChange(digits)
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={field.placeholder || '000.000.000-00'}
+          maxLength={14}
+          autoFocus
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-3 text-base sm:text-lg transition-colors custom-placeholder"
+          style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
         />
       )}
 

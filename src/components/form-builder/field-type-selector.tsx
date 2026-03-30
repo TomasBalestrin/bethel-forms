@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Hand,
   Heart,
+  Fingerprint,
 } from 'lucide-react'
 
 const MVP_FIELD_TYPES = [
@@ -21,6 +22,7 @@ const MVP_FIELD_TYPES = [
   { type: 'number', label: 'Número', icon: Hash, color: 'text-teal-600 bg-teal-50' },
   { type: 'email', label: 'Email', icon: Mail, color: 'text-green-600 bg-green-50' },
   { type: 'phone', label: 'Telefone', icon: Phone, color: 'text-orange-600 bg-orange-50' },
+  { type: 'cpf', label: 'CPF', icon: Fingerprint, color: 'text-rose-600 bg-rose-50' },
   { type: 'multiple_choice', label: 'Múltipla Escolha', icon: ListChecks, color: 'text-indigo-600 bg-indigo-50' },
   { type: 'satisfaction_scale', label: 'Escala (NPS)', icon: Star, color: 'text-yellow-600 bg-yellow-50' },
   { type: 'message', label: 'Mensagem', icon: MessageSquare, color: 'text-gray-600 bg-gray-50' },

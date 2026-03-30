@@ -379,10 +379,12 @@ function PublicFormContent() {
               {/* Input fields */}
               {!['welcome', 'thanks', 'message'].includes(currentField.type) && (
                 <div>
-                  <h2 className="form-title mb-1" style={titleStyle}>
-                    {currentField.title}
-                    {currentField.required && <span className="text-red-500 ml-1">*</span>}
-                  </h2>
+                  {(currentField.title || currentField.required) && (
+                    <h2 className="form-title mb-1" style={titleStyle}>
+                      {currentField.title || ''}
+                      {currentField.required && <span className="text-red-500 ml-1">*</span>}
+                    </h2>
+                  )}
                   {currentField.description && (
                     <p className="form-desc mb-4 sm:mb-6 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
                   )}
