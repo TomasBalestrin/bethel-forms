@@ -124,7 +124,11 @@ export default function ResponsesPage() {
     if (!answer) return ''
     const val = answer.value
     if (val === null || val === undefined) return ''
-    if (typeof val === 'object') return JSON.stringify(val)
+    if (typeof val === 'object') {
+      if (val.option && val.text) return `${val.option}: ${val.text}`
+      if (val.option) return String(val.option)
+      return JSON.stringify(val)
+    }
     return String(val)
   }
 

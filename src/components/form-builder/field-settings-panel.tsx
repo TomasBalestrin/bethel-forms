@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Plus, Trash2, GripVertical } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Type } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 
 interface FieldSettingsPanelProps {
@@ -41,6 +41,21 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
 
   function removeOption(index: number) {
     const options = (settings.options || []).filter((_: any, i: number) => i !== index)
+    updateSettings('options', options)
+  }
+
+  function toggleOptionTextInput(index: number) {
+    const options = [...(settings.options || [])]
+    options[index] = { ...options[index], hasTextInput: !options[index].hasTextInput }
+    if (!options[index].hasTextInput) {
+      delete options[index].textInputPlaceholder
+    }
+    updateSettings('options', options)
+  }
+
+  function updateOptionPlaceholder(index: number, placeholder: string) {
+    const options = [...(settings.options || [])]
+    options[index] = { ...options[index], textInputPlaceholder: placeholder }
     updateSettings('options', options)
   }
 
@@ -107,19 +122,38 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
         <div className="space-y-2">
           <Label>Opções</Label>
           {(settings.options || []).map((option: any, index: number) => (
-            <div key={option.id} className="flex items-center gap-2">
-              <GripVertical size={14} className="text-gray-300 flex-shrink-0" />
-              <Input
-                value={option.label}
-                onChange={(e) => updateOption(index, e.target.value)}
-                className="flex-1"
-              />
-              <button
-                onClick={() => removeOption(index)}
-                className="p-1 text-gray-400 hover:text-red-500"
-              >
-                <Trash2 size={14} />
-              </button>
+            <div key={option.id} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <GripVertical size={14} className="text-gray-300 flex-shrink-0" />
+                <Input
+                  value={option.label}
+                  onChange={(e) => updateOption(index, e.target.value)}
+                  className="flex-1"
+                />
+                <button
+                  onClick={() => toggleOptionTextInput(index)}
+                  title="Campo de texto ao selecionar"
+                  className={`p-1 transition-colors ${option.hasTextInput ? 'text-blue-600' : 'text-gray-300 hover:text-gray-500'}`}
+                >
+                  <Type size={14} />
+                </button>
+                <button
+                  onClick={() => removeOption(index)}
+                  className="p-1 text-gray-400 hover:text-red-500"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              {option.hasTextInput && (
+                <div className="ml-6">
+                  <Input
+                    value={option.textInputPlaceholder || ''}
+                    onChange={(e) => updateOptionPlaceholder(index, e.target.value)}
+                    placeholder="Placeholder do campo (ex: Qual?)"
+                    className="text-xs h-8"
+                  />
+                </div>
+              )}
             </div>
           ))}
           <Button variant="outline" size="sm" onClick={addOption} className="w-full">
