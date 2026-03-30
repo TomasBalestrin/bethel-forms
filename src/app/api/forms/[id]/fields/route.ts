@@ -25,7 +25,7 @@ export async function POST(
 
     const VALID_FIELD_TYPES = [
       'welcome', 'thanks', 'message',
-      'short_text', 'long_text', 'email', 'phone', 'number',
+      'short_text', 'long_text', 'email', 'phone', 'number', 'cpf',
       'multiple_choice', 'checkbox', 'satisfaction_scale',
       'date', 'url', 'file_upload', 'currency',
     ]

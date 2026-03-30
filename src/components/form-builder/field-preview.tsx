@@ -100,6 +100,18 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
           </div>
         )}
 
+        {/* CPF */}
+        {field.type === 'cpf' && (
+          <div>
+            <h2 className="text-xl font-semibold mb-1" style={titleStyle}>
+              {field.title || 'Seu CPF'}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </h2>
+            {field.description && <p className="text-sm mb-4 whitespace-pre-line" style={descStyle}>{field.description}</p>}
+            <Input type="text" placeholder={field.placeholder || '000.000.000-00'} disabled style={answerStyle} />
+          </div>
+        )}
+
         {/* Number */}
         {field.type === 'number' && (
           <div>
