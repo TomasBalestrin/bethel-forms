@@ -136,31 +136,52 @@ export function FormFieldInput({
       {field.type === 'multiple_choice' && (
         <div className="space-y-2">
           {(settings.options || []).map((option: any, i: number) => {
-            const isSelected = value === (option.value || option.label)
+            const optionValue = option.value || option.label
+            const selectedOption = typeof value === 'object' && value !== null ? value.option : value
+            const isSelected = selectedOption === optionValue
             return (
-              <button
-                key={option.id || i}
-                onClick={() => {
-                  onChange(option.value || option.label)
-                  setTimeout(onSubmit, 300)
-                }}
-                className="w-full flex items-center gap-3 p-3.5 sm:p-4 rounded-xl text-left transition-all min-h-[48px]"
-                style={{
-                  border: `2px solid ${isSelected ? primaryColor : optionColor}`,
-                  backgroundColor: isSelected ? `${primaryColor}10` : 'transparent',
-                }}
-              >
-                <span
-                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+              <div key={option.id || i}>
+                <button
+                  onClick={() => {
+                    if (option.hasTextInput) {
+                      onChange({ option: optionValue, text: '' })
+                    } else {
+                      onChange(optionValue)
+                      setTimeout(onSubmit, 300)
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 p-3.5 sm:p-4 rounded-xl text-left transition-all min-h-[48px]"
                   style={{
                     border: `2px solid ${isSelected ? primaryColor : optionColor}`,
-                    color: isSelected ? primaryColor : textColor,
+                    backgroundColor: isSelected ? `${primaryColor}10` : 'transparent',
                   }}
                 >
-                  {String.fromCharCode(65 + i)}
-                </span>
-                <span className="font-medium" style={{ color: textColor }}>{option.label}</span>
-              </button>
+                  <span
+                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                    style={{
+                      border: `2px solid ${isSelected ? primaryColor : optionColor}`,
+                      color: isSelected ? primaryColor : textColor,
+                    }}
+                  >
+                    {String.fromCharCode(65 + i)}
+                  </span>
+                  <span className="font-medium" style={{ color: textColor }}>{option.label}</span>
+                </button>
+                {isSelected && option.hasTextInput && (
+                  <div className="mt-2 ml-10">
+                    <input
+                      type="text"
+                      value={(typeof value === 'object' && value?.text) || ''}
+                      onChange={(e) => onChange({ option: optionValue, text: e.target.value })}
+                      onKeyDown={handleKeyDown}
+                      placeholder={option.textInputPlaceholder || 'Digite aqui...'}
+                      autoFocus
+                      className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-2 text-base transition-colors custom-placeholder"
+                      style={{ ...inputStyle, borderColor: (typeof value === 'object' && value?.text) ? primaryColor : undefined }}
+                    />
+                  </div>
+                )}
+              </div>
             )
           })}
           {settings.allowOther && (

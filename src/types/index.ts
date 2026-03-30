@@ -29,6 +29,8 @@ export interface FormFieldOption {
   value: string
   imageUrl?: string
   points?: number
+  hasTextInput?: boolean
+  textInputPlaceholder?: string
 }
 
 export interface FormFieldSettings {
