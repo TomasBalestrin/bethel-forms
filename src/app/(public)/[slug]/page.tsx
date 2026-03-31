@@ -24,6 +24,7 @@ function PublicFormContent() {
   const [error, setError] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
+  const answersRef = useRef<Record<string, any>>({})
   const [responseId, setResponseId] = useState<string | null>(null)
   const responseIdRef = useRef<string | null>(null)
   const [fieldError, setFieldError] = useState('')
@@ -168,7 +169,7 @@ function PublicFormContent() {
       return
     }
 
-    const value = answers[currentField.id]
+    const value = answersRef.current[currentField.id] ?? answers[currentField.id]
     const validationError = validateField(currentField, value)
     if (validationError) {
       setFieldError(validationError)
@@ -405,7 +406,9 @@ function PublicFormContent() {
                     field={currentField}
                     value={answers[currentField.id]}
                     onChange={(val) => {
-                      setAnswers({ ...answers, [currentField.id]: val })
+                      const updated = { ...answers, [currentField.id]: val }
+                      setAnswers(updated)
+                      answersRef.current = updated
                       setFieldError('')
                     }}
                     onSubmit={goNext}
