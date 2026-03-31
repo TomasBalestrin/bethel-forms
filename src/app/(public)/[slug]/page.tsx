@@ -356,7 +356,7 @@ function PublicFormContent() {
                 <div className="text-center">
                   <h1 className="form-title mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="form-desc mb-6 whitespace-pre-line text-left" style={descStyle}>{currentField.description}</p>
+                    <p className="form-desc mb-6 whitespace-pre-line text-center" style={descStyle}>{currentField.description}</p>
                   )}
                   {currentField.settings?.thanksType === 'redirect' && currentField.settings?.redirectUrl && /^https?:\/\//.test(currentField.settings.redirectUrl) && (
                     <a
