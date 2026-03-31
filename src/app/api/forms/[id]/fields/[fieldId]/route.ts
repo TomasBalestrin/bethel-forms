@@ -32,7 +32,18 @@ export async function PUT(
     if (data.media !== undefined) updateData.media = data.media
     if (data.logic !== undefined) updateData.logic = data.logic
     if (data.conversionEvent !== undefined) updateData.conversion_event = data.conversionEvent
-    if (data.type !== undefined) updateData.type = data.type
+    if (data.type !== undefined) {
+      const VALID_FIELD_TYPES = [
+        'welcome', 'thanks', 'message',
+        'short_text', 'long_text', 'email', 'phone', 'number', 'cpf',
+        'multiple_choice', 'checkbox', 'satisfaction_scale',
+        'date', 'url', 'file_upload', 'currency',
+      ]
+      if (!VALID_FIELD_TYPES.includes(data.type)) {
+        return NextResponse.json({ error: 'Tipo de campo inválido' }, { status: 400 })
+      }
+      updateData.type = data.type
+    }
     if (data.order !== undefined) updateData.order = data.order
 
     const { data: field, error } = await supabaseAdmin
@@ -74,7 +85,19 @@ export async function DELETE(
       return NextResponse.json({ error: 'Formulário não encontrado' }, { status: 404 })
     }
 
-    // First, delete all response_answers that reference this field
+    // Verify the field belongs to this form before deleting answers
+    const { data: fieldExists } = await supabaseAdmin
+      .from('form_fields')
+      .select('id')
+      .eq('id', params.fieldId)
+      .eq('form_id', params.id)
+      .maybeSingle()
+
+    if (!fieldExists) {
+      return NextResponse.json({ error: 'Campo não encontrado' }, { status: 404 })
+    }
+
+    // Delete all response_answers that reference this field
     // (response_answers.field_id has no ON DELETE CASCADE, so we must delete manually)
     const { error: answersError } = await supabaseAdmin
       .from('response_answers')

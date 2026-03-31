@@ -20,7 +20,13 @@ export async function POST(
       )
     }
 
-    const { responseId, fieldId, value } = await request.json()
+    let body: any
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Corpo da requisição inválido' }, { status: 400 })
+    }
+    const { responseId, fieldId, value } = body
 
     if (!responseId || !fieldId) {
       return NextResponse.json(

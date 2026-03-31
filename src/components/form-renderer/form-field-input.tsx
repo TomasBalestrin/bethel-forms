@@ -63,6 +63,13 @@ export function FormFieldInput({
     }
   }
 
+  function handleLongTextKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault()
+      onSubmit()
+    }
+  }
+
   return (
     <div className={cn('w-full', error && 'animate-shake')}>
       {/* Long Text */}
@@ -70,6 +77,7 @@ export function FormFieldInput({
         <textarea
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleLongTextKeyDown}
           placeholder={field.placeholder || 'Digite sua resposta...'}
           maxLength={settings.maxLength || undefined}
           autoFocus
@@ -276,9 +284,23 @@ export function FormFieldInput({
         </div>
       )}
 
+      {/* Fallback for unimplemented field types */}
+      {!['long_text', 'short_text', 'email', 'phone', 'number', 'cpf', 'multiple_choice', 'satisfaction_scale'].includes(field.type) && (
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={field.placeholder || 'Digite sua resposta...'}
+          autoFocus
+          className="w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 outline-none py-3 text-base sm:text-lg transition-colors custom-placeholder"
+          style={{ ...inputStyle, borderColor: value ? primaryColor : undefined }}
+        />
+      )}
+
       {/* Error message */}
       {error && (
-        <p className="text-red-500 text-sm mt-2">{error}</p>
+        <p className="text-red-500 text-sm mt-2" role="alert">{error}</p>
       )}
     </div>
   )

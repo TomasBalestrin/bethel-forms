@@ -143,6 +143,18 @@ function PublicFormContent() {
     if (field.type === 'multiple_choice' && field.required && !value) {
       return 'Selecione uma opção'
     }
+    if (field.type === 'multiple_choice' && value && typeof value === 'object' && value.option) {
+      const selectedOpt = (field.settings?.options || []).find(
+        (o: any) => (o.value || o.label) === value.option
+      )
+      if (selectedOpt?.hasTextInput && !value.text?.trim()) {
+        return 'Preencha o campo de texto'
+      }
+    }
+    if (field.type === 'cpf' && value) {
+      const digits = value.replace(/\D/g, '')
+      if (digits.length !== 11) return 'Informe um CPF válido'
+    }
     return null
   }
 
@@ -424,12 +436,14 @@ function PublicFormContent() {
           <button
             onClick={goPrev}
             disabled={currentIndex === 0}
+            aria-label="Pergunta anterior"
             className="w-11 h-11 sm:w-10 sm:h-10 rounded-lg bg-white shadow border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30"
           >
             ↑
           </button>
           <button
             onClick={goNext}
+            aria-label="Próxima pergunta"
             className="w-11 h-11 sm:w-10 sm:h-10 rounded-lg bg-white shadow border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50"
           >
             ↓
