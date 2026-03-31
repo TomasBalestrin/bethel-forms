@@ -39,6 +39,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'IDs de campo inválidos' }, { status: 400 })
     }
 
+    // Ensure all form fields are included (no partial reorders)
+    if (fieldIds.length !== validIds.size) {
+      return NextResponse.json(
+        { error: 'Todos os campos do formulário devem ser incluídos na reordenação' },
+        { status: 400 }
+      )
+    }
+
     const results = await Promise.all(
       fieldIds.map((fieldId: string, index: number) =>
         supabaseAdmin
