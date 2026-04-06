@@ -156,7 +156,7 @@ export default function ResponsesPage() {
   const selectedIdx = selectedResponse ? responses.indexOf(selectedResponse) : -1
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50/50">
+    <div className="h-screen flex flex-col bg-gray-50/50 overflow-hidden">
       <FormTopBar
         formId={formId}
         formName={form?.name || 'Respostas'}
