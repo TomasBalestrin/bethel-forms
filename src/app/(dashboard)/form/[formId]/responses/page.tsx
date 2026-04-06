@@ -269,15 +269,25 @@ export default function ResponsesPage() {
                     {fields.map((f: any) => {
                       const val = getAnswerValue(response, f.id)
                       const isPhone = f.type === 'phone' && val
+                      const isTruncated = val && val.length > 30
                       return (
-                        <td key={f.id} className="px-4 py-3 text-sm max-w-[220px]">
+                        <td key={f.id} className="px-4 py-3 text-sm max-w-[220px] relative group/cell">
                           {val ? (
-                            <span className={cn('truncate block', isPhone && 'text-blue-600')}>
-                              {isPhone ? formatPhone(val) : val}
-                              {isPhone && (
-                                <Phone size={12} className="inline-block ml-1.5 text-green-500" />
+                            <>
+                              <span className={cn('truncate block', isPhone && 'text-blue-600')}>
+                                {isPhone ? formatPhone(val) : val}
+                                {isPhone && (
+                                  <Phone size={12} className="inline-block ml-1.5 text-green-500" />
+                                )}
+                              </span>
+                              {isTruncated && (
+                                <div className="absolute left-2 bottom-full mb-1 z-50 hidden group-hover/cell:block max-w-sm w-max">
+                                  <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                                    {val}
+                                  </div>
+                                </div>
                               )}
-                            </span>
+                            </>
                           ) : (
                             <span className="text-gray-300 italic text-xs">Não respondeu...</span>
                           )}
