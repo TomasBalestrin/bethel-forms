@@ -14,6 +14,7 @@ import {
   Trash2,
   Palette,
   Settings2,
+  GripVertical,
 } from 'lucide-react'
 
 const FIELD_TYPE_LABELS: Record<string, { label: string; color: string }> = {
@@ -48,6 +49,8 @@ export default function FormEditorPage() {
   const [publishing, setPublishing] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [publishError, setPublishError] = useState('')
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   // LIVE snapshot — updated SYNCHRONOUSLY, never depends on React render cycle
   const live = useRef<{ form: any; fields: any[]; originalFieldIds: Set<string> }>({
@@ -190,6 +193,13 @@ export default function FormEditorPage() {
   function moveField(fromIndex: number, toIndex: number) {
     updateFields((prev: any[]) => {
       if (toIndex < 0 || toIndex >= prev.length) return prev
+      const moving = prev[fromIndex]
+      const target = prev[toIndex]
+      if (!moving || !target) return prev
+      // Don't move protected fields (welcome/thanks)
+      if (moving.type === 'welcome' || moving.type === 'thanks') return prev
+      // Don't allow dropping on welcome (stays first) or thanks (stays last)
+      if (target.type === 'welcome' || target.type === 'thanks') return prev
       const updated = [...prev]
       const [moved] = updated.splice(fromIndex, 1)
       updated.splice(toIndex, 0, moved)
@@ -357,18 +367,65 @@ export default function FormEditorPage() {
               const typeInfo = FIELD_TYPE_LABELS[field.type] || { label: field.type, color: 'bg-gray-100 text-gray-600' }
               const isProtected = field.type === 'welcome' || field.type === 'thanks'
               const isSelected = selectedFieldId === field.id
+              const isDragging = dragIndex === index
+              const isDragOver = dragOverIndex === index && dragIndex !== null && dragIndex !== index
 
               return (
                 <div
                   key={field.id}
+                  draggable={!isProtected}
+                  onDragStart={(e) => {
+                    if (isProtected) { e.preventDefault(); return }
+                    setDragIndex(index)
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}
+                  onDragOver={(e) => {
+                    if (dragIndex === null) return
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    if (dragOverIndex !== index) setDragOverIndex(index)
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverIndex === index) setDragOverIndex(null)
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (dragIndex !== null && dragIndex !== index) {
+                      const targetField = fields[index]
+                      if (targetField && (targetField.type === 'welcome' || targetField.type === 'thanks')) {
+                        // Don't allow dropping on protected fields
+                      } else {
+                        moveField(dragIndex, index)
+                      }
+                    }
+                    setDragIndex(null)
+                    setDragOverIndex(null)
+                  }}
+                  onDragEnd={() => {
+                    setDragIndex(null)
+                    setDragOverIndex(null)
+                  }}
                   onClick={() => setSelectedFieldId(field.id)}
                   className={cn(
-                    'flex items-start gap-3 px-4 py-3 cursor-pointer border-l-2 transition-colors group',
+                    'flex items-start gap-2 px-2 py-3 cursor-pointer border-l-2 transition-all group',
                     isSelected
                       ? 'bg-blue-50/60 border-l-blue-500'
-                      : 'border-l-transparent hover:bg-gray-50'
+                      : 'border-l-transparent hover:bg-gray-50',
+                    isDragging && 'opacity-40',
+                    isDragOver && dragIndex !== null && dragIndex > index && 'border-t-2 border-t-blue-400',
+                    isDragOver && dragIndex !== null && dragIndex < index && 'border-b-2 border-b-blue-400'
                   )}
                 >
+                  {!isProtected ? (
+                    <span
+                      className="flex items-center text-gray-300 group-hover:text-gray-500 cursor-grab active:cursor-grabbing flex-shrink-0 mt-0.5"
+                      title="Arrastar para reordenar"
+                    >
+                      <GripVertical size={14} />
+                    </span>
+                  ) : (
+                    <span className="w-[14px] flex-shrink-0" />
+                  )}
                   <span className="text-xs text-gray-400 font-medium mt-0.5 w-4 text-right flex-shrink-0">
                     {index + 1}
                   </span>
