@@ -215,6 +215,7 @@ export default function ResponsesPage() {
               <tr className="border-b border-gray-200 bg-white">
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 w-12">#</th>
                 <th className="w-10 px-1"></th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 whitespace-nowrap">Data de preenchimento</th>
                 {fields.map((f: any, i: number) => (
                   <th key={f.id} className="text-left px-4 py-3 text-xs font-medium text-gray-500 whitespace-nowrap">
                     {i + 1}.{f.title || f.type}
@@ -225,13 +226,13 @@ export default function ResponsesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={fields.length + 2} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 3} className="text-center py-16 text-gray-400 text-sm">
                     Carregando...
                   </td>
                 </tr>
               ) : responses.length === 0 ? (
                 <tr>
-                  <td colSpan={fields.length + 2} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 3} className="text-center py-16 text-gray-400 text-sm">
                     Nenhuma resposta ainda
                   </td>
                 </tr>
@@ -265,6 +266,9 @@ export default function ResponsesPage() {
                           }
                         }}
                       />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      {formatDate(response.completedAt || response.createdAt)}
                     </td>
                     {fields.map((f: any) => {
                       const val = getAnswerValue(response, f.id)
@@ -379,6 +383,12 @@ export default function ResponsesPage() {
                     <div className="text-xs text-gray-500">
                       <span>Data de início: {formatDate(selectedResponse.createdAt)}</span>
                       <br />
+                      {selectedResponse.completedAt && (
+                        <>
+                          <span>Data de preenchimento: {formatDate(selectedResponse.completedAt)}</span>
+                          <br />
+                        </>
+                      )}
                       <span className="text-gray-400">Identificador: {selectedResponse.id}</span>
                     </div>
                     <div className="flex items-center gap-2">
