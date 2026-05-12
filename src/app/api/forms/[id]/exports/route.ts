@@ -46,7 +46,8 @@ export async function POST(
     )
 
     const csvHeaders = [
-      'Data',
+      'Data de início',
+      'Data de preenchimento',
       ...questionFields.map((f: any) => f.title || f.type),
       'Status',
       'UTM Source',
@@ -79,6 +80,7 @@ export async function POST(
         const answers = r.response_answers || []
         const row = [
           new Date(r.created_at).toISOString(),
+          r.completed_at ? new Date(r.completed_at).toISOString() : '',
           ...questionFields.map((f: any) => {
             const answer = answers.find((a: any) => a.field_id === f.id)
             const value = answer?.value
