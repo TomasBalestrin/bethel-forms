@@ -117,6 +117,21 @@ export default function ResponsesPage() {
   const extraFields = Array.from(extraFieldsMap.values()).sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
   const fields = [...currentFields, ...extraFields]
 
+  // UTM columns appended after all question columns. Shown only when at least
+  // one response carries UTM data. Doubles as a diagnostic: no columns => nothing
+  // is being captured.
+  const UTM_COLUMNS = [
+    { key: 'utm_source', label: 'UTM Source' },
+    { key: 'utm_medium', label: 'UTM Medium' },
+    { key: 'utm_campaign', label: 'UTM Campaign' },
+    { key: 'utm_term', label: 'UTM Term' },
+    { key: 'utm_content', label: 'UTM Content' },
+  ]
+  const hasUtmData = responses.some((r: any) => {
+    const m = r.metadata || {}
+    return UTM_COLUMNS.some((c) => m[c.key])
+  })
+
   function getAnswerValue(response: any, fieldId: string): string {
     const answer = response.answers?.find(
       (a: any) => a.fieldId === fieldId || a.field_id === fieldId
@@ -221,18 +236,23 @@ export default function ResponsesPage() {
                     {i + 1}.{f.title || f.type}
                   </th>
                 ))}
+                {hasUtmData && UTM_COLUMNS.map((c) => (
+                  <th key={c.key} className="text-left px-4 py-3 text-xs font-medium text-gray-500 whitespace-nowrap">
+                    {c.label}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={fields.length + 3} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 3 + (hasUtmData ? UTM_COLUMNS.length : 0)} className="text-center py-16 text-gray-400 text-sm">
                     Carregando...
                   </td>
                 </tr>
               ) : responses.length === 0 ? (
                 <tr>
-                  <td colSpan={fields.length + 3} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 3 + (hasUtmData ? UTM_COLUMNS.length : 0)} className="text-center py-16 text-gray-400 text-sm">
                     Nenhuma resposta ainda
                   </td>
                 </tr>
@@ -294,6 +314,18 @@ export default function ResponsesPage() {
                             </>
                           ) : (
                             <span className="text-gray-300 italic text-xs">Não respondeu...</span>
+                          )}
+                        </td>
+                      )
+                    })}
+                    {hasUtmData && UTM_COLUMNS.map((c) => {
+                      const utmVal = response.metadata?.[c.key]
+                      return (
+                        <td key={c.key} className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap max-w-[200px]">
+                          {utmVal ? (
+                            <span className="truncate block">{String(utmVal)}</span>
+                          ) : (
+                            <span className="text-gray-300 italic">—</span>
                           )}
                         </td>
                       )

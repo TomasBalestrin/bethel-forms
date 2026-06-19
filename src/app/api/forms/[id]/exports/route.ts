@@ -53,6 +53,8 @@ export async function POST(
       'UTM Source',
       'UTM Medium',
       'UTM Campaign',
+      'UTM Term',
+      'UTM Content',
     ]
 
     // 2. Fetch responses in batches of 500 to avoid OOM
@@ -92,6 +94,8 @@ export async function POST(
           meta?.utm_source || '',
           meta?.utm_medium || '',
           meta?.utm_campaign || '',
+          meta?.utm_term || '',
+          meta?.utm_content || '',
         ]
         rows.push(
           row.map((v: any) => {
