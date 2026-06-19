@@ -117,9 +117,8 @@ export default function ResponsesPage() {
   const extraFields = Array.from(extraFieldsMap.values()).sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
   const fields = [...currentFields, ...extraFields]
 
-  // UTM columns appended after all question columns. Shown only when at least
-  // one response carries UTM data. Doubles as a diagnostic: no columns => nothing
-  // is being captured.
+  // UTM columns appended after all question columns. Always shown so the fields
+  // are visible even when empty (empty cell renders as "—").
   const UTM_COLUMNS = [
     { key: 'utm_source', label: 'UTM Source' },
     { key: 'utm_medium', label: 'UTM Medium' },
@@ -127,10 +126,6 @@ export default function ResponsesPage() {
     { key: 'utm_term', label: 'UTM Term' },
     { key: 'utm_content', label: 'UTM Content' },
   ]
-  const hasUtmData = responses.some((r: any) => {
-    const m = r.metadata || {}
-    return UTM_COLUMNS.some((c) => m[c.key])
-  })
 
   function getAnswerValue(response: any, fieldId: string): string {
     const answer = response.answers?.find(
@@ -236,7 +231,7 @@ export default function ResponsesPage() {
                     {i + 1}.{f.title || f.type}
                   </th>
                 ))}
-                {hasUtmData && UTM_COLUMNS.map((c) => (
+                {UTM_COLUMNS.map((c) => (
                   <th key={c.key} className="text-left px-4 py-3 text-xs font-medium text-gray-500 whitespace-nowrap">
                     {c.label}
                   </th>
@@ -246,13 +241,13 @@ export default function ResponsesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={fields.length + 3 + (hasUtmData ? UTM_COLUMNS.length : 0)} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 3 + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
                     Carregando...
                   </td>
                 </tr>
               ) : responses.length === 0 ? (
                 <tr>
-                  <td colSpan={fields.length + 3 + (hasUtmData ? UTM_COLUMNS.length : 0)} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 3 + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
                     Nenhuma resposta ainda
                   </td>
                 </tr>
@@ -318,7 +313,7 @@ export default function ResponsesPage() {
                         </td>
                       )
                     })}
-                    {hasUtmData && UTM_COLUMNS.map((c) => {
+                    {UTM_COLUMNS.map((c) => {
                       const utmVal = response.metadata?.[c.key]
                       return (
                         <td key={c.key} className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap max-w-[200px]">
