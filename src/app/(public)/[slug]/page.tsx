@@ -197,7 +197,7 @@ function PublicFormContent() {
         }, formData.tracking)
 
         if (fieldToSave.conversionEvent) {
-          fireTrackingEvent('FormFlowConversion', {
+          fireTrackingEvent('Lead', {
             form_id: formData.id,
             form_name: formData.name,
             field_id: fieldToSave.id,

@@ -216,7 +216,7 @@ export default function FormSettingsPage() {
                   placeholder="123456789012345"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Eventos: PageView, StartForm, SubmitAnswer, EndForm, FormFlowConversion
+                  Eventos: PageView, StartForm, SubmitAnswer, EndForm, Lead
                 </p>
               </div>
 

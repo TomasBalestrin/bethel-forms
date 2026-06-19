@@ -277,7 +277,7 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
         <div className="flex items-center justify-between pt-2 border-t border-gray-200">
           <div>
             <Label>Evento de conversão</Label>
-            <p className="text-xs text-gray-400">Dispara FormFlowConversion</p>
+            <p className="text-xs text-gray-400">Dispara evento Lead (Meta)</p>
           </div>
           <button
             onClick={() => onUpdate({ conversionEvent: !field.conversionEvent })}

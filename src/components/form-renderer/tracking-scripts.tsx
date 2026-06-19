@@ -78,6 +78,15 @@ export function TrackingScripts({ pixelId, gaId, gtmId }: TrackingScriptsProps) 
   )
 }
 
+// Meta standard events fire via 'track' (recognized for optimization/conversions);
+// everything else fires via 'trackCustom'.
+const META_STANDARD_EVENTS = new Set([
+  'AddPaymentInfo', 'AddToCart', 'AddToWishlist', 'CompleteRegistration',
+  'Contact', 'CustomizeProduct', 'Donate', 'FindLocation', 'InitiateCheckout',
+  'Lead', 'Purchase', 'Schedule', 'Search', 'StartTrial', 'SubmitApplication',
+  'Subscribe', 'ViewContent', 'PageView',
+])
+
 // Helper to fire tracking events
 export function fireTrackingEvent(
   eventName: string,
@@ -86,11 +95,8 @@ export function fireTrackingEvent(
 ) {
   // Meta Pixel event
   if (tracking?.pixelId && typeof window !== 'undefined' && (window as any).fbq) {
-    if (eventName === 'FormFlowConversion') {
-      ;(window as any).fbq('trackCustom', 'FormFlowConversion', data)
-    } else {
-      ;(window as any).fbq('trackCustom', eventName, data)
-    }
+    const method = META_STANDARD_EVENTS.has(eventName) ? 'track' : 'trackCustom'
+    ;(window as any).fbq(method, eventName, data)
   }
 
   // GA4 event
