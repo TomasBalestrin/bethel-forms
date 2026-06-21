@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { FormTopBar } from '@/components/dashboard/form-top-bar'
+import { WebhooksSection } from '@/components/dashboard/webhooks-section'
 import { Input } from '@/components/ui/input'
 import { Save } from 'lucide-react'
 
@@ -320,6 +321,11 @@ export default function FormSettingsPage() {
               </div>
             </div>
           </div>
+
+          <hr className="border-gray-200 mb-8" />
+
+          {/* Webhooks */}
+          <WebhooksSection formId={formId} />
         </div>
       </div>
     </div>

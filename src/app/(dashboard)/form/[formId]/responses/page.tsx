@@ -16,6 +16,7 @@ import {
   ArrowUp,
   Phone,
   Mail,
+  RefreshCw,
 } from 'lucide-react'
 import { ColorTagPicker } from '@/components/dashboard/color-tag-picker'
 
@@ -33,6 +34,8 @@ export default function ResponsesPage() {
   const [selectedResponse, setSelectedResponse] = useState<any>(null)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [metrics, setMetrics] = useState<any>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [resending, setResending] = useState(false)
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
@@ -65,8 +68,54 @@ export default function ResponsesPage() {
       const data = await res.json()
       setResponses(data.responses)
       setPagination(data.pagination)
+      setSelectedIds(new Set())
     }
     setLoading(false)
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) =>
+      prev.size === responses.length ? new Set() : new Set(responses.map((r) => r.id))
+    )
+  }
+
+  async function bulkResend() {
+    if (selectedIds.size === 0) return
+    setResending(true)
+    const res = await fetch(`/api/forms/${formId}/webhooks/resend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responseIds: Array.from(selectedIds) }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setResending(false)
+    if (res.ok) {
+      alert(`Reenvio: ${d.sent} ok, ${d.failed} falha (${d.total} resposta(s))`)
+      setSelectedIds(new Set())
+    } else {
+      alert(d.error || 'Erro ao reenviar')
+    }
+  }
+
+  async function resendOne(responseId: string) {
+    setResending(true)
+    const res = await fetch(`/api/forms/${formId}/webhooks/resend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responseId }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setResending(false)
+    if (res.ok) alert(`Reenvio: ${d.sent} ok, ${d.failed} falha`)
+    else alert(d.error || 'Erro ao reenviar')
   }
 
   async function fetchMetrics() {
@@ -217,12 +266,43 @@ export default function ResponsesPage() {
         }
       />
 
+      {/* Bulk action bar */}
+      {view === 'table' && selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2 bg-blue-50 border-b border-blue-100">
+          <span className="text-xs font-medium text-blue-700">
+            {selectedIds.size} selecionada(s)
+          </span>
+          <button
+            onClick={bulkResend}
+            disabled={resending}
+            className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            <RefreshCw size={12} />
+            {resending ? 'Reenviando...' : 'Reenviar webhook'}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-gray-500 hover:text-gray-700"
+          >
+            Limpar
+          </button>
+        </div>
+      )}
+
       {/* Table View */}
       {view === 'table' && (
         <div className="flex-1 overflow-auto">
           <table className="w-full bg-white">
             <thead className="sticky top-0 z-10">
               <tr className="border-b border-gray-200 bg-white">
+                <th className="w-8 px-2">
+                  <input
+                    type="checkbox"
+                    checked={responses.length > 0 && selectedIds.size === responses.length}
+                    onChange={toggleSelectAll}
+                    className="cursor-pointer"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 w-12">#</th>
                 <th className="w-10 px-1"></th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 whitespace-nowrap">Data de preenchimento</th>
@@ -241,13 +321,13 @@ export default function ResponsesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={fields.length + 3 + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 4 + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
                     Carregando...
                   </td>
                 </tr>
               ) : responses.length === 0 ? (
                 <tr>
-                  <td colSpan={fields.length + 3 + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 4 + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
                     Nenhuma resposta ainda
                   </td>
                 </tr>
@@ -258,6 +338,14 @@ export default function ResponsesPage() {
                     onClick={() => { setSelectedResponse(response); setView('individual') }}
                     className="border-b border-gray-100 hover:bg-blue-50/30 cursor-pointer transition-colors"
                   >
+                    <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(response.id)}
+                        onChange={() => toggleSelect(response.id)}
+                        className="cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-3 text-xs text-gray-400 font-medium">
                       {pagination.total - ((pagination.page - 1) * 50 + idx)}
                     </td>
@@ -528,13 +616,23 @@ export default function ResponsesPage() {
                       <ArrowUp size={12} />
                       Voltar ao topo
                     </button>
-                    <button
-                      onClick={() => deleteResponse(selectedResponse.id)}
-                      className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600"
-                    >
-                      <Trash2 size={12} />
-                      Remover
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => resendOne(selectedResponse.id)}
+                        disabled={resending}
+                        className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
+                      >
+                        <RefreshCw size={12} />
+                        Reenviar webhook
+                      </button>
+                      <button
+                        onClick={() => deleteResponse(selectedResponse.id)}
+                        className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600"
+                      >
+                        <Trash2 size={12} />
+                        Remover
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
