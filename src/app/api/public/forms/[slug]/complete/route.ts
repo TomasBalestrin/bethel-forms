@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { dispatchWebhooks } from '@/lib/webhooks/dispatch'
 
 export async function POST(
   request: Request,
@@ -85,6 +86,10 @@ export async function POST(
       console.error('Error completing response:', error)
       return NextResponse.json({ error: 'Erro ao completar resposta' }, { status: 500 })
     }
+
+    // Dispara webhooks do lead (best-effort, nunca lança). Aguardado para
+    // garantir entrega/log antes do serverless encerrar.
+    await dispatchWebhooks(form.id, responseId, { event: 'lead.completed' })
 
     return NextResponse.json(updated)
   } catch (error) {
