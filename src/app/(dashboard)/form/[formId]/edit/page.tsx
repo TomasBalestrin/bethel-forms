@@ -533,6 +533,7 @@ export default function FormEditorPage() {
               />
             ) : (
               <AppearancePanel
+                formId={form.id}
                 settings={form.settings}
                 onUpdate={(partialSettings) => {
                   updateForm((prev: any) => {
