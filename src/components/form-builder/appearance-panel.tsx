@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ChevronDown, ChevronRight, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WebhooksSection } from '@/components/dashboard/webhooks-section'
 
 interface AppearancePanelProps {
   settings: any
   onUpdate: (settings: any) => void
+  formId?: string
 }
 
 function CollapsibleSection({
@@ -53,7 +55,7 @@ function ColorRow({ label, value, onChange, hint }: { label: string; value: stri
   )
 }
 
-export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
+export function AppearancePanel({ settings, onUpdate, formId }: AppearancePanelProps) {
   const appearance = settings?.appearance || {}
 
   // Send ONLY the changed key — the parent deep-merges into latest state
@@ -213,6 +215,13 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
           </div>
         </div>
       </CollapsibleSection>
+
+      {/* Webhooks */}
+      {formId && (
+        <CollapsibleSection title="Webhooks" defaultOpen={false}>
+          <WebhooksSection formId={formId} embedded />
+        </CollapsibleSection>
+      )}
     </div>
   )
 }

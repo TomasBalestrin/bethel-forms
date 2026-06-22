@@ -24,7 +24,7 @@ interface WebhookLog {
   webhooks?: { url: string; name: string | null }
 }
 
-export function WebhooksSection({ formId }: { formId: string }) {
+export function WebhooksSection({ formId, embedded = false }: { formId: string; embedded?: boolean }) {
   const [webhooks, setWebhooks] = useState<Webhook[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -102,11 +102,20 @@ export function WebhooksSection({ formId }: { formId: string }) {
   }
 
   return (
-    <div className="mb-12">
-      <h2 className="text-lg font-bold text-gray-900 mb-1">Webhooks</h2>
-      <p className="text-sm text-gray-500 mb-6">
-        Cada lead completo é enviado via POST para as URLs configuradas.
-      </p>
+    <div className={embedded ? '' : 'mb-12'}>
+      {!embedded && (
+        <>
+          <h2 className="text-lg font-bold text-gray-900 mb-1">Webhooks</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Cada lead completo é enviado via POST para as URLs configuradas.
+          </p>
+        </>
+      )}
+      {embedded && (
+        <p className="text-xs text-gray-500 mb-3">
+          Cada lead completo dispara um POST para as URLs abaixo.
+        </p>
+      )}
 
       {loading ? (
         <p className="text-sm text-gray-400">Carregando...</p>
