@@ -50,9 +50,7 @@ export async function POST(request: Request) {
         borderStyle: 'rounded',
         progressBar: 'bar',
       },
-      seo: {},
       tracking: { utmEnabled: false },
-      notifications: { ownerEmail: true },
       language: 'pt-BR',
     }
 

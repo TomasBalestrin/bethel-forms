@@ -414,11 +414,21 @@ export default function FormEditorPage() {
         publishing={publishing}
         hasChanges={hasChanges}
         saveError={publishError}
-        onOpenDesign={() => setRightPanel('appearance')}
-        designActive={rightPanel === 'appearance'}
+        onOpenDesign={() => { setShowSettingsModal(false); setRightPanel('appearance') }}
+        designActive={rightPanel === 'appearance' && !showSettingsModal}
         onOpenSettings={() => setShowSettingsModal(true)}
+        settingsActive={showSettingsModal}
       />
 
+      {showSettingsModal ? (
+        <SettingsModal
+          open={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          settings={form.settings}
+          onUpdate={mergeSettings}
+          formId={form.id}
+        />
+      ) : (
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Field List */}
         <div
@@ -586,6 +596,7 @@ export default function FormEditorPage() {
           </div>
         </div>
       </div>
+      )}
 
       {showFieldSelector && (
         <FieldTypeSelector
@@ -593,14 +604,6 @@ export default function FormEditorPage() {
           onClose={() => setShowFieldSelector(false)}
         />
       )}
-
-      <SettingsModal
-        open={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        settings={form.settings}
-        onUpdate={mergeSettings}
-        formId={form.id}
-      />
     </div>
   )
 }
