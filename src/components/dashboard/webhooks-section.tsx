@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { Plus, Trash2, Zap, RefreshCw, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { Plus, Trash2, Zap, RefreshCw, ChevronDown, ChevronRight, X, Pencil } from 'lucide-react'
 
 interface Webhook {
   id: string
@@ -33,10 +33,20 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
   // form de novo webhook
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
+  const [token, setToken] = useState('')
+  const [tokenHeader, setTokenHeader] = useState('Authorization')
   const [headerRows, setHeaderRows] = useState<{ key: string; value: string }[]>([])
   const [error, setError] = useState('')
   const [testing, setTesting] = useState<string | null>(null)
   const [testResult, setTestResult] = useState<Record<string, string>>({})
+
+  // edição de webhook existente
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editUrl, setEditUrl] = useState('')
+  const [editName, setEditName] = useState('')
+  const [editToken, setEditToken] = useState('')
+  const [editTokenHeader, setEditTokenHeader] = useState('Authorization')
+  const [editError, setEditError] = useState('')
 
   useEffect(() => {
     load()
@@ -49,14 +59,38 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
     setLoading(false)
   }
 
+  // Monta o objeto headers a partir do token + headers extras, sobre uma base.
+  function mergeHeaders(
+    tHeader: string,
+    tValue: string,
+    rows: { key: string; value: string }[],
+    base: Record<string, string> = {}
+  ): Record<string, string> {
+    const headers: Record<string, string> = { ...base }
+    const name = (tHeader.trim() || 'Authorization')
+    // remove qualquer chave igual (case-insensitive) ao header do token
+    for (const k of Object.keys(headers)) {
+      if (k.toLowerCase() === name.toLowerCase()) delete headers[k]
+    }
+    for (const r of rows) if (r.key.trim()) headers[r.key.trim()] = r.value
+    if (tValue.trim()) headers[name] = tValue.trim()
+    return headers
+  }
+
+  // Extrai o token (header Authorization ou o primeiro) de um webhook existente.
+  function tokenFromHeaders(h: Record<string, string>): { name: string; value: string } {
+    const keys = Object.keys(h || {})
+    const k = keys.find((x) => x.toLowerCase() === 'authorization') || keys[0]
+    return k ? { name: k, value: h[k] } : { name: 'Authorization', value: '' }
+  }
+
   async function create() {
     setError('')
     if (!url.trim()) {
       setError('URL é obrigatória')
       return
     }
-    const headers: Record<string, string> = {}
-    for (const r of headerRows) if (r.key.trim()) headers[r.key.trim()] = r.value
+    const headers = mergeHeaders(tokenHeader, token, headerRows)
     const res = await fetch(`/api/forms/${formId}/webhooks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -69,8 +103,42 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
     }
     setUrl('')
     setName('')
+    setToken('')
+    setTokenHeader('Authorization')
     setHeaderRows([])
     setAdding(false)
+    load()
+  }
+
+  function startEdit(wh: Webhook) {
+    const t = tokenFromHeaders(wh.headers)
+    setEditingId(wh.id)
+    setEditUrl(wh.url)
+    setEditName(wh.name || '')
+    setEditTokenHeader(t.name)
+    setEditToken(t.value)
+    setEditError('')
+  }
+
+  async function saveEdit(wh: Webhook) {
+    setEditError('')
+    if (!editUrl.trim()) {
+      setEditError('URL é obrigatória')
+      return
+    }
+    // preserva outros headers, troca só o do token
+    const headers = mergeHeaders(editTokenHeader, editToken, [], wh.headers || {})
+    const res = await fetch(`/api/forms/${formId}/webhooks/${wh.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: editUrl.trim(), name: editName.trim() || null, headers }),
+    })
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}))
+      setEditError(d.error || 'Erro ao salvar')
+      return
+    }
+    setEditingId(null)
     load()
   }
 
@@ -127,57 +195,87 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
 
           {webhooks.map((wh) => (
             <div key={wh.id} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  {wh.name && <p className="text-sm font-medium text-gray-900">{wh.name}</p>}
-                  <p className="text-xs text-gray-500 break-all font-mono">{wh.url}</p>
-                  {wh.headers && Object.keys(wh.headers).length > 0 && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {Object.keys(wh.headers).length} header(s) custom
-                    </p>
-                  )}
-                  {testResult[wh.id] && (
-                    <p
-                      className={`text-xs mt-1 ${
-                        testResult[wh.id].startsWith('OK') ? 'text-green-600' : 'text-red-600'
-                      }`}
+              {editingId === wh.id ? (
+                <div className="space-y-2">
+                  <Input placeholder="https://seu-destino.com/webhook" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} />
+                  <Input placeholder="Nome (opcional)" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                  <div className="flex gap-2">
+                    <Input placeholder="Header" value={editTokenHeader} onChange={(e) => setEditTokenHeader(e.target.value)} className="w-32" />
+                    <Input placeholder="Token / chave" value={editToken} onChange={(e) => setEditToken(e.target.value)} className="flex-1" />
+                  </div>
+                  <p className="text-[10px] text-gray-400">
+                    Token enviado nesse header. Ex: Authorization = Bearer abc123
+                  </p>
+                  {editError && <p className="text-xs text-red-600">{editError}</p>}
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => saveEdit(wh)} className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                      Salvar
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900">
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    {wh.name && <p className="text-sm font-medium text-gray-900">{wh.name}</p>}
+                    <p className="text-xs text-gray-500 break-all font-mono">{wh.url}</p>
+                    {wh.headers && Object.keys(wh.headers).length > 0 && (
+                      <p className="text-xs text-green-600 mt-1">
+                        🔑 token/header configurado
+                      </p>
+                    )}
+                    {testResult[wh.id] && (
+                      <p
+                        className={`text-xs mt-1 ${
+                          testResult[wh.id].startsWith('OK') ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        {testResult[wh.id]}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => test(wh.id)}
+                      disabled={testing === wh.id}
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                      title="Testar"
                     >
-                      {testResult[wh.id]}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => test(wh.id)}
-                    disabled={testing === wh.id}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
-                    title="Testar"
-                  >
-                    <Zap size={12} />
-                    {testing === wh.id ? '...' : 'Testar'}
-                  </button>
-                  <button
-                    onClick={() => toggleActive(wh)}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${
-                      wh.active ? 'bg-blue-600' : 'bg-gray-300'
-                    }`}
-                    title={wh.active ? 'Ativo' : 'Inativo'}
-                  >
-                    <span
-                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${
-                        wh.active ? 'translate-x-5' : ''
+                      <Zap size={12} />
+                      {testing === wh.id ? '...' : 'Testar'}
+                    </button>
+                    <button
+                      onClick={() => startEdit(wh)}
+                      className="p-1.5 text-gray-400 hover:text-blue-600"
+                      title="Editar"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => toggleActive(wh)}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${
+                        wh.active ? 'bg-blue-600' : 'bg-gray-300'
                       }`}
-                    />
-                  </button>
-                  <button
-                    onClick={() => remove(wh.id)}
-                    className="p-1.5 text-gray-400 hover:text-red-600"
-                    title="Excluir"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                      title={wh.active ? 'Ativo' : 'Inativo'}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${
+                          wh.active ? 'translate-x-5' : ''
+                        }`}
+                      />
+                    </button>
+                    <button
+                      onClick={() => remove(wh.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-600"
+                      title="Excluir"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ))}
 
@@ -186,8 +284,20 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
               <Input placeholder="https://seu-destino.com/webhook" value={url} onChange={(e) => setUrl(e.target.value)} />
               <Input placeholder="Nome (opcional)" value={name} onChange={(e) => setName(e.target.value)} />
 
+              {/* Token / autenticação do destino */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-gray-600">Token / autenticação (opcional)</p>
+                <div className="flex gap-2">
+                  <Input placeholder="Header" value={tokenHeader} onChange={(e) => setTokenHeader(e.target.value)} className="w-32" />
+                  <Input placeholder="Cole o token da plataforma" value={token} onChange={(e) => setToken(e.target.value)} className="flex-1" />
+                </div>
+                <p className="text-[10px] text-gray-400">
+                  Enviado como header na requisição. Ex: Authorization = Bearer abc123, ou X-API-Key = sua-chave.
+                </p>
+              </div>
+
               <div className="space-y-2">
-                <p className="text-xs font-medium text-gray-600">Headers customizados (ex: Authorization)</p>
+                <p className="text-xs font-medium text-gray-600">Headers adicionais (avançado)</p>
                 {headerRows.map((r, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Input
