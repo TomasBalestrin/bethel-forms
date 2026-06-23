@@ -5,13 +5,40 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ChevronDown, ChevronRight, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { WebhooksSection } from '@/components/dashboard/webhooks-section'
 
 interface AppearancePanelProps {
   settings: any
   onUpdate: (settings: any) => void
   formId?: string
 }
+
+const FONT_OPTIONS = [
+  { value: '', label: 'Padrão do sistema' },
+  { value: 'Inter, sans-serif', label: 'Inter' },
+  { value: '"Plus Jakarta Sans", sans-serif', label: 'Plus Jakarta Sans' },
+  { value: 'Georgia, serif', label: 'Georgia (serifada)' },
+  { value: '"Courier New", monospace', label: 'Monoespaçada' },
+]
+
+const FONT_SIZE_OPTIONS = [
+  { value: '', label: 'Padrão' },
+  { value: '15px', label: 'Pequena' },
+  { value: '16px', label: 'Média' },
+  { value: '18px', label: 'Grande' },
+  { value: '20px', label: 'Extra grande' },
+]
+
+const BUTTON_RADIUS_OPTIONS = [
+  { value: '8px', label: 'Arredondado' },
+  { value: '0px', label: 'Reto' },
+  { value: '9999px', label: 'Pill' },
+]
+
+const BUTTON_SIZE_OPTIONS = [
+  { value: 'sm', label: 'Pequeno' },
+  { value: 'md', label: 'Médio' },
+  { value: 'lg', label: 'Grande' },
+]
 
 function CollapsibleSection({
   title,
@@ -55,7 +82,7 @@ function ColorRow({ label, value, onChange, hint }: { label: string; value: stri
   )
 }
 
-export function AppearancePanel({ settings, onUpdate, formId }: AppearancePanelProps) {
+export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
   const appearance = settings?.appearance || {}
 
   // Send ONLY the changed key — the parent deep-merges into latest state
@@ -156,72 +183,72 @@ export function AppearancePanel({ settings, onUpdate, formId }: AppearancePanelP
         </div>
       </CollapsibleSection>
 
-      {/* Rastreamento */}
-      <CollapsibleSection title="Rastreamento" defaultOpen={false}>
+      {/* Tipografia */}
+      <CollapsibleSection title="Tipografia" defaultOpen={false}>
         <div className="space-y-1.5">
-          <Label>Meta Pixel ID</Label>
-          <Input
-            value={settings?.tracking?.pixelId || ''}
-            onChange={(e) =>
-              onUpdate({ tracking: { pixelId: e.target.value } })
-            }
-            placeholder="Ex: 123456789012345"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Google Analytics ID</Label>
-          <Input
-            value={settings?.tracking?.gaId || ''}
-            onChange={(e) =>
-              onUpdate({ tracking: { gaId: e.target.value } })
-            }
-            placeholder="Ex: G-XXXXXXXXXX"
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <Label>Capturar UTMs</Label>
-          <button
-            onClick={() =>
-              onUpdate({ tracking: { utmEnabled: !settings?.tracking?.utmEnabled } })
-            }
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              settings?.tracking?.utmEnabled ? 'bg-blue-600' : 'bg-gray-300'
-            }`}
+          <Label>Família da fonte</Label>
+          <select
+            value={appearance.fontFamily || ''}
+            onChange={(e) => updateAppearance('fontFamily', e.target.value)}
+            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
           >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                settings?.tracking?.utmEnabled ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
+            {FONT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
-      </CollapsibleSection>
-
-      {/* Link */}
-      <CollapsibleSection title="Link" defaultOpen={false}>
         <div className="space-y-1.5">
-          <Label>Slug personalizado</Label>
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-400 whitespace-nowrap">/</span>
-            <Input
-              value={settings?._slug || ''}
-              onChange={(e) =>
-                onUpdate({ _slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })
-              }
-              placeholder="meu-formulario"
-            />
-          </div>
+          <Label>Tamanho base do texto</Label>
+          <select
+            value={appearance.baseFontSize || ''}
+            onChange={(e) => updateAppearance('baseFontSize', e.target.value)}
+            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
+          >
+            {FONT_SIZE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
       </CollapsibleSection>
 
-      {/* Webhooks */}
-      {formId && (
-        <CollapsibleSection title="Webhooks" defaultOpen={false}>
-          <WebhooksSection formId={formId} embedded />
-        </CollapsibleSection>
-      )}
+      {/* Botão */}
+      <CollapsibleSection title="Botão" defaultOpen={false}>
+        <ColorRow
+          label="Cor do botão"
+          value={appearance.buttonColor || appearance.primaryColor || '#2563eb'}
+          onChange={(v) => updateAppearance('buttonColor', v)}
+          hint="Cor de fundo dos botões de avançar/enviar."
+        />
+        <ColorRow
+          label="Cor do texto do botão"
+          value={appearance.buttonTextColor || '#ffffff'}
+          onChange={(v) => updateAppearance('buttonTextColor', v)}
+        />
+        <div className="space-y-1.5">
+          <Label>Formato do botão</Label>
+          <select
+            value={appearance.buttonRadius || '8px'}
+            onChange={(e) => updateAppearance('buttonRadius', e.target.value)}
+            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
+          >
+            {BUTTON_RADIUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Tamanho do botão</Label>
+          <select
+            value={appearance.buttonSize || 'md'}
+            onChange={(e) => updateAppearance('buttonSize', e.target.value)}
+            className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
+          >
+            {BUTTON_SIZE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      </CollapsibleSection>
     </div>
   )
 }

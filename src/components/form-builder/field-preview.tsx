@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { MessageSquare } from 'lucide-react'
+import { getFieldAlignment, alignToJustify } from '@/lib/field-alignment'
 
 interface FieldPreviewProps {
   field: any
@@ -31,24 +32,37 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
   const descriptionColor = appearance.descriptionColor || '#6b7280'
   const optionColor = appearance.optionColor || '#d1d5db'
 
-  const titleStyle: React.CSSProperties = { color: textColor }
-  const descStyle: React.CSSProperties = { color: descriptionColor }
+  const align = getFieldAlignment(field)
+  const titleStyle: React.CSSProperties = { color: textColor, textAlign: align.title }
+  const descStyle: React.CSSProperties = { color: descriptionColor, textAlign: align.description }
+  const elementsStyle: React.CSSProperties = { textAlign: align.elements }
   const answerStyle: React.CSSProperties = {}
+  const buttonStyle: React.CSSProperties = {
+    backgroundColor: appearance.buttonColor || primaryColor,
+    color: appearance.buttonTextColor || '#ffffff',
+    borderRadius: appearance.buttonRadius || undefined,
+    fontSize: appearance.buttonSize === 'sm' ? '14px' : appearance.buttonSize === 'lg' ? '18px' : undefined,
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] p-8">
+    <div
+      className="flex flex-col items-center justify-center min-h-[400px] p-8"
+      style={{ fontFamily: appearance.fontFamily || undefined, fontSize: appearance.baseFontSize || undefined }}
+    >
       <div className="w-full max-w-lg">
         {/* Welcome */}
         {field.type === 'welcome' && (
-          <div className="text-center">
+          <div>
             <h2 className="text-2xl font-bold mb-2" style={titleStyle}>{field.title || 'Bem-vindo!'}</h2>
-            <p className="mb-6 whitespace-pre-line text-left" style={descStyle}>{field.description || 'Preencha o formulário'}</p>
-            <button
-              className="px-8 py-3 rounded-lg text-white font-medium"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Começar
-            </button>
+            <p className="mb-6 whitespace-pre-line" style={descStyle}>{field.description || 'Preencha o formulário'}</p>
+            <div style={elementsStyle}>
+              <button
+                className="px-8 py-3 rounded-lg text-white font-medium"
+                style={buttonStyle}
+              >
+                Começar
+              </button>
+            </div>
           </div>
         )}
 
@@ -179,7 +193,7 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </h2>
             {field.description && <p className="text-sm mb-4 whitespace-pre-line" style={descStyle}>{field.description}</p>}
-            <div className="flex gap-2 justify-center my-4">
+            <div className={cn('flex gap-2 my-4', alignToJustify[align.elements])}>
               {Array.from(
                 { length: (settings.scaleMax ?? 10) - (settings.scaleMin ?? 0) + 1 },
                 (_, i) => (settings.scaleMin ?? 0) + i
@@ -202,8 +216,10 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
 
         {/* Message */}
         {field.type === 'message' && (
-          <div className="text-center">
-            <MessageSquare className="mx-auto mb-4 text-gray-400" size={36} />
+          <div>
+            <div style={elementsStyle}>
+              <MessageSquare className="inline-block mb-4 text-gray-400" size={36} />
+            </div>
             <h2 className="text-xl font-semibold mb-2" style={titleStyle}>{field.title || 'Mensagem'}</h2>
             {field.description && <p className="whitespace-pre-line" style={descStyle}>{field.description}</p>}
           </div>
@@ -211,26 +227,28 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
 
         {/* Thanks */}
         {field.type === 'thanks' && (
-          <div className="text-center">
+          <div>
             <h2 className="text-2xl font-bold mb-2" style={titleStyle}>{field.title || 'Obrigado!'}</h2>
             {field.description && <p className="mb-4 whitespace-pre-line" style={descStyle}>{field.description}</p>}
             {settings.thanksType === 'redirect' && settings.buttonText && (
-              <button
-                className="px-6 py-2 rounded-lg text-white font-medium"
-                style={{ backgroundColor: primaryColor }}
-              >
-                {settings.buttonText}
-              </button>
+              <div style={elementsStyle}>
+                <button
+                  className="px-6 py-2 rounded-lg text-white font-medium"
+                  style={buttonStyle}
+                >
+                  {settings.buttonText}
+                </button>
+              </div>
             )}
           </div>
         )}
 
         {/* Next button for input fields */}
         {!['welcome', 'thanks', 'message'].includes(field.type) && (
-          <div className="mt-6">
+          <div className="mt-6" style={elementsStyle}>
             <button
               className="px-6 py-2.5 rounded-lg text-white font-medium text-sm"
-              style={{ backgroundColor: primaryColor }}
+              style={buttonStyle}
             >
               Próximo →
             </button>
