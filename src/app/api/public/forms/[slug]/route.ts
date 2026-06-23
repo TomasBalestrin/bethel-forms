@@ -60,7 +60,6 @@ export async function GET(
       appearance: settings?.appearance || {},
       tracking: settings?.tracking || {},
       language: settings?.language || 'pt-BR',
-      seo: settings?.seo || {},
     }, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',

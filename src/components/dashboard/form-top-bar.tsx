@@ -21,6 +21,7 @@ interface FormTopBarProps {
   onOpenDesign?: () => void
   designActive?: boolean
   onOpenSettings?: () => void
+  settingsActive?: boolean
 }
 
 const tabs = [
@@ -43,6 +44,7 @@ export function FormTopBar({
   onOpenDesign,
   designActive,
   onOpenSettings,
+  settingsActive,
 }: FormTopBarProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -128,7 +130,12 @@ export function FormTopBar({
         {onOpenSettings && (
           <button
             onClick={onOpenSettings}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border transition-colors',
+              settingsActive
+                ? 'border-blue-200 bg-blue-50 text-blue-600'
+                : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+            )}
           >
             <Settings size={14} />
             Configurações

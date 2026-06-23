@@ -123,22 +123,11 @@ export interface FormAppearance {
 
 export interface FormSettings {
   appearance: FormAppearance
-  seo: {
-    ogTitle?: string
-    ogDescription?: string
-    ogImage?: string
-  }
   tracking: {
     pixelId?: string
     gaId?: string
     gtmId?: string
     utmEnabled?: boolean
-  }
-  notifications: {
-    ownerEmail?: boolean
-    respondentCopy?: boolean
-    forwardEmails?: string[]
-    notifyPartial?: boolean
   }
   customDomain?: string
   language?: 'pt-BR' | 'en' | 'es'
