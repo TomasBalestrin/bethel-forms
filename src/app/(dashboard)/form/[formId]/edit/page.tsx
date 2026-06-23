@@ -9,11 +9,15 @@ import { FieldTypeSelector } from '@/components/form-builder/field-type-selector
 import { FieldSettingsPanel } from '@/components/form-builder/field-settings-panel'
 import { FieldPreview } from '@/components/form-builder/field-preview'
 import { AppearancePanel } from '@/components/form-builder/appearance-panel'
+import { SettingsModal } from '@/components/form-builder/settings-modal'
+import { ResizeHandle } from '@/components/form-builder/resize-handle'
+
+const PANEL_MIN = 220
+const PANEL_MAX = 420
+const clampPanel = (w: number) => Math.min(PANEL_MAX, Math.max(PANEL_MIN, w))
 import {
   Plus,
   Trash2,
-  Palette,
-  Settings2,
   GripVertical,
 } from 'lucide-react'
 
@@ -46,6 +50,9 @@ export default function FormEditorPage() {
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
   const [showFieldSelector, setShowFieldSelector] = useState(false)
   const [rightPanel, setRightPanel] = useState<'settings' | 'appearance'>('settings')
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [leftWidth, setLeftWidth] = useState(288)
+  const [rightWidth, setRightWidth] = useState(320)
   const [publishing, setPublishing] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [publishError, setPublishError] = useState('')
@@ -85,6 +92,31 @@ export default function FormEditorPage() {
     setOriginalFieldIds(val)
   }
 
+  // Selecionar campo abre as propriedades automaticamente.
+  // Se o usuario esta editando o Design global (appearance), mantem o Design.
+  function selectField(id: string) {
+    setSelectedFieldId(id)
+    setRightPanel((prev) => (prev === 'appearance' ? prev : 'settings'))
+  }
+
+  // Deep-merge de 1 nivel em form.settings — usado por Design (AppearancePanel)
+  // e Configuracoes (SettingsModal), pra ambos seguirem o mesmo modelo de save.
+  function mergeSettings(partialSettings: any) {
+    updateForm((prev: any) => {
+      const prevSettings = prev.settings || {}
+      const merged = { ...prevSettings }
+      for (const key of Object.keys(partialSettings)) {
+        if (typeof partialSettings[key] === 'object' && partialSettings[key] !== null && !Array.isArray(partialSettings[key])) {
+          merged[key] = { ...prevSettings[key], ...partialSettings[key] }
+        } else {
+          merged[key] = partialSettings[key]
+        }
+      }
+      return { ...prev, settings: merged }
+    })
+    markChanged()
+  }
+
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
   }, [authStatus, router])
@@ -92,6 +124,31 @@ export default function FormEditorPage() {
   useEffect(() => {
     if (authStatus === 'authenticated') fetchForm()
   }, [formId, authStatus])
+
+  // Abre o overlay de Configuracoes quando vem de /settings (?config=1)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('config') === '1') {
+      setShowSettingsModal(true)
+    }
+  }, [])
+
+  // Larguras dos paineis — restaura do localStorage (por navegador)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('builder:panelWidths')
+      if (raw) {
+        const { left, right } = JSON.parse(raw)
+        if (typeof left === 'number') setLeftWidth(clampPanel(left))
+        if (typeof right === 'number') setRightWidth(clampPanel(right))
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('builder:panelWidths', JSON.stringify({ left: leftWidth, right: rightWidth }))
+    } catch {}
+  }, [leftWidth, rightWidth])
 
   // Warn user before leaving with unsaved changes
   useEffect(() => {
@@ -357,11 +414,17 @@ export default function FormEditorPage() {
         publishing={publishing}
         hasChanges={hasChanges}
         saveError={publishError}
+        onOpenDesign={() => setRightPanel('appearance')}
+        designActive={rightPanel === 'appearance'}
+        onOpenSettings={() => setShowSettingsModal(true)}
       />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Field List */}
-        <div className="w-72 bg-white border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
+        <div
+          style={{ width: leftWidth }}
+          className="bg-white border-r border-gray-200 flex flex-col overflow-hidden flex-shrink-0"
+        >
           <div className="flex-1 overflow-y-auto">
             {fields.map((field, index) => {
               const typeInfo = FIELD_TYPE_LABELS[field.type] || { label: field.type, color: 'bg-gray-100 text-gray-600' }
@@ -405,7 +468,7 @@ export default function FormEditorPage() {
                     setDragIndex(null)
                     setDragOverIndex(null)
                   }}
-                  onClick={() => setSelectedFieldId(field.id)}
+                  onClick={() => selectField(field.id)}
                   className={cn(
                     'flex items-start gap-2 px-2 py-3 cursor-pointer border-l-2 transition-all group',
                     isSelected
@@ -464,8 +527,10 @@ export default function FormEditorPage() {
           </div>
         </div>
 
+        <ResizeHandle onResize={(dx) => setLeftWidth((w) => clampPanel(w + dx))} />
+
         {/* Center - Preview */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {selectedField && (
             <div className="flex items-center justify-between px-6 py-2 bg-white border-b border-gray-100">
               <div>
@@ -476,36 +541,11 @@ export default function FormEditorPage() {
                   {FIELD_TYPE_LABELS[selectedField.type]?.label || selectedField.type}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setRightPanel('settings')}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors',
-                    rightPanel === 'settings'
-                      ? 'border-blue-200 bg-blue-50 text-blue-600'
-                      : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                  )}
-                >
-                  <Settings2 size={12} />
-                  Opções
-                </button>
-                <button
-                  onClick={() => setRightPanel('appearance')}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors',
-                    rightPanel === 'appearance'
-                      ? 'border-blue-200 bg-blue-50 text-blue-600'
-                      : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                  )}
-                >
-                  <Palette size={12} />
-                  Design
-                </button>
-              </div>
             </div>
           )}
 
           <div
+            onClick={() => selectedField && setRightPanel('settings')}
             className="flex-1 flex items-center justify-center overflow-y-auto relative"
             style={{ backgroundColor: form.settings?.appearance?.backgroundColor || '#ffffff' }}
           >
@@ -521,8 +561,13 @@ export default function FormEditorPage() {
           </div>
         </div>
 
+        <ResizeHandle onResize={(dx) => setRightWidth((w) => clampPanel(w - dx))} />
+
         {/* Right Panel */}
-        <div className="w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
+        <div
+          style={{ width: rightWidth }}
+          className="bg-white border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0"
+        >
           <div className="flex-1 overflow-y-auto">
             {rightPanel === 'settings' ? (
               <FieldSettingsPanel
@@ -535,21 +580,7 @@ export default function FormEditorPage() {
               <AppearancePanel
                 formId={form.id}
                 settings={form.settings}
-                onUpdate={(partialSettings) => {
-                  updateForm((prev: any) => {
-                    const prevSettings = prev.settings || {}
-                    const merged = { ...prevSettings }
-                    for (const key of Object.keys(partialSettings)) {
-                      if (typeof partialSettings[key] === 'object' && partialSettings[key] !== null && !Array.isArray(partialSettings[key])) {
-                        merged[key] = { ...prevSettings[key], ...partialSettings[key] }
-                      } else {
-                        merged[key] = partialSettings[key]
-                      }
-                    }
-                    return { ...prev, settings: merged }
-                  })
-                  markChanged()
-                }}
+                onUpdate={mergeSettings}
               />
             )}
           </div>
@@ -562,6 +593,14 @@ export default function FormEditorPage() {
           onClose={() => setShowFieldSelector(false)}
         />
       )}
+
+      <SettingsModal
+        open={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        settings={form.settings}
+        onUpdate={mergeSettings}
+        formId={form.id}
+      />
     </div>
   )
 }

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { ArrowLeft, Eye, Share2, Check, Pencil } from 'lucide-react'
+import { ArrowLeft, Eye, Share2, Check, Pencil, Palette, Settings } from 'lucide-react'
 
 interface FormTopBarProps {
   formId: string
@@ -18,6 +18,9 @@ interface FormTopBarProps {
   hasChanges?: boolean
   saveError?: string
   rightActions?: React.ReactNode
+  onOpenDesign?: () => void
+  designActive?: boolean
+  onOpenSettings?: () => void
 }
 
 const tabs = [
@@ -37,6 +40,9 @@ export function FormTopBar({
   hasChanges,
   saveError,
   rightActions,
+  onOpenDesign,
+  designActive,
+  onOpenSettings,
 }: FormTopBarProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -105,13 +111,36 @@ export function FormTopBar({
       {/* Right actions */}
       <div className="flex items-center gap-2 flex-shrink-0">
         {rightActions}
+        {onOpenDesign && (
+          <button
+            onClick={onOpenDesign}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border transition-colors',
+              designActive
+                ? 'border-blue-200 bg-blue-50 text-blue-600'
+                : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+            )}
+          >
+            <Palette size={14} />
+            Design
+          </button>
+        )}
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"
+          >
+            <Settings size={14} />
+            Configurações
+          </button>
+        )}
         {formSlug && (
           <button
             onClick={() => window.open(`/${formSlug}`, '_blank')}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"
           >
             <Eye size={14} />
-            Ver
+            Preview
           </button>
         )}
         {formSlug && (

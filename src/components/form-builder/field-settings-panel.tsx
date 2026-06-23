@@ -4,8 +4,50 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Plus, Trash2, GripVertical, Type } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Type, AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
+import { getFieldAlignment } from '@/lib/field-alignment'
+import type { FieldAlign } from '@/types'
+
+const ALIGN_OPTS: { value: FieldAlign; icon: typeof AlignLeft; label: string }[] = [
+  { value: 'left', icon: AlignLeft, label: 'Esquerda' },
+  { value: 'center', icon: AlignCenter, label: 'Centro' },
+  { value: 'right', icon: AlignRight, label: 'Direita' },
+]
+
+function AlignRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: FieldAlign
+  onChange: (v: FieldAlign) => void
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex gap-1">
+        {ALIGN_OPTS.map(({ value: v, icon: Icon, label: l }) => (
+          <button
+            key={v}
+            type="button"
+            aria-label={l}
+            aria-pressed={value === v}
+            onClick={() => onChange(v)}
+            className={`p-1.5 rounded border transition-colors ${
+              value === v
+                ? 'border-blue-300 bg-blue-50 text-blue-600'
+                : 'border-gray-200 text-gray-400 hover:bg-gray-50'
+            }`}
+          >
+            <Icon size={14} />
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 interface FieldSettingsPanelProps {
   field: any
@@ -22,9 +64,14 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
   }
 
   const settings = field.settings || {}
+  const alignment = getFieldAlignment(field)
 
   function updateSettings(key: string, value: any) {
     onUpdate({ settings: { ...settings, [key]: value } })
+  }
+
+  function updateAlignment(key: 'title' | 'description' | 'elements', value: FieldAlign) {
+    updateSettings('alignment', { ...(settings.alignment || {}), [key]: value })
   }
 
   function addOption() {
@@ -271,6 +318,14 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
           />
         </div>
       )}
+
+      {/* Alignment */}
+      <div className="space-y-2 pt-2 border-t border-gray-200">
+        <Label className="uppercase tracking-wide text-[11px] text-gray-500">Alinhamento</Label>
+        <AlignRow label="Título" value={alignment.title} onChange={(v) => updateAlignment('title', v)} />
+        <AlignRow label="Descrição" value={alignment.description} onChange={(v) => updateAlignment('description', v)} />
+        <AlignRow label="Elementos" value={alignment.elements} onChange={(v) => updateAlignment('elements', v)} />
+      </div>
 
       {/* Conversion event toggle */}
       {!['welcome', 'thanks', 'message'].includes(field.type) && (

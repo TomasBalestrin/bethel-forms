@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { FormFieldInput } from '@/components/form-renderer/form-field-input'
 import { TrackingScripts, fireTrackingEvent } from '@/components/form-renderer/tracking-scripts'
 import { cn } from '@/lib/utils'
+import { getFieldAlignment } from '@/lib/field-alignment'
 
 export default function PublicFormPage() {
   return (
@@ -107,13 +108,27 @@ function PublicFormContent() {
   const primaryColor = appearance.primaryColor || '#2563eb'
   const textColor = appearance.textColor || '#111827'
 
+  const descriptionColor = appearance.descriptionColor || '#6b7280'
+  const buttonColor = appearance.buttonColor || primaryColor
+  const buttonTextColor = appearance.buttonTextColor || '#ffffff'
+  const buttonRadius = appearance.buttonRadius || '8px'
+  const buttonFontSize = appearance.buttonSize === 'sm' ? '14px' : appearance.buttonSize === 'lg' ? '18px' : '16px'
+  const buttonStyle: React.CSSProperties = {
+    backgroundColor: buttonColor,
+    color: buttonTextColor,
+    borderRadius: buttonRadius,
+    fontSize: buttonFontSize,
+  }
+  const align = currentField ? getFieldAlignment(currentField) : null
   const titleStyle: React.CSSProperties = {
     color: textColor,
+    textAlign: align?.title,
   }
-  const descriptionColor = appearance.descriptionColor || '#6b7280'
   const descStyle: React.CSSProperties = {
     color: descriptionColor,
+    textAlign: align?.description,
   }
+  const elementsStyle: React.CSSProperties = { textAlign: align?.elements }
   const answerStyle: React.CSSProperties = {}
   const totalInputFields = fields.filter(
     (f: any) => !['welcome', 'thanks', 'message'].includes(f.type)
@@ -284,6 +299,8 @@ function PublicFormContent() {
       style={{
         backgroundColor: appearance.backgroundColor || '#ffffff',
         color: appearance.textColor || '#111827',
+        fontFamily: appearance.fontFamily || undefined,
+        fontSize: appearance.baseFontSize || undefined,
       }}
     >
       <TrackingScripts
@@ -337,55 +354,61 @@ function PublicFormContent() {
             <>
               {/* Welcome */}
               {currentField.type === 'welcome' && (
-                <div className="text-center">
+                <div>
                   <h1 className="form-title mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="form-desc mb-6 sm:mb-8 whitespace-pre-line text-left" style={descStyle}>{currentField.description}</p>
+                    <p className="form-desc mb-6 sm:mb-8 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
                   )}
-                  <button
-                    onClick={goNext}
-                    className="w-full sm:w-auto px-8 py-3.5 sm:py-3 rounded-lg text-white font-medium form-answer min-h-[48px]"
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    Começar
-                  </button>
+                  <div style={elementsStyle}>
+                    <button
+                      onClick={goNext}
+                      className="w-full sm:w-auto px-8 py-3.5 sm:py-3 rounded-lg text-white font-medium form-answer min-h-[48px]"
+                      style={buttonStyle}
+                    >
+                      Começar
+                    </button>
+                  </div>
                 </div>
               )}
 
               {/* Thanks */}
               {currentField.type === 'thanks' && (
-                <div className="text-center">
+                <div>
                   <h1 className="form-title mb-3" style={titleStyle}>{currentField.title}</h1>
                   {currentField.description && (
-                    <p className="form-desc mb-6 whitespace-pre-line text-center" style={descStyle}>{currentField.description}</p>
+                    <p className="form-desc mb-6 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
                   )}
                   {currentField.settings?.thanksType === 'redirect' && currentField.settings?.redirectUrl && /^https?:\/\//.test(currentField.settings.redirectUrl) && (
-                    <a
-                      href={currentField.settings.redirectUrl}
-                      rel="noopener noreferrer"
-                      className="inline-block px-6 py-3 rounded-lg text-white font-medium min-h-[48px]"
-                      style={{ backgroundColor: primaryColor }}
-                    >
-                      {currentField.settings.buttonText || 'Continuar'}
-                    </a>
+                    <div style={elementsStyle}>
+                      <a
+                        href={currentField.settings.redirectUrl}
+                        rel="noopener noreferrer"
+                        className="inline-block px-6 py-3 rounded-lg text-white font-medium min-h-[48px]"
+                        style={buttonStyle}
+                      >
+                        {currentField.settings.buttonText || 'Continuar'}
+                      </a>
+                    </div>
                   )}
                 </div>
               )}
 
               {/* Message */}
               {currentField.type === 'message' && (
-                <div className="text-center">
+                <div>
                   <h2 className="form-title mb-3" style={titleStyle}>{currentField.title}</h2>
                   {currentField.description && (
                     <p className="form-desc mb-6 whitespace-pre-line" style={descStyle}>{currentField.description}</p>
                   )}
-                  <button
-                    onClick={goNext}
-                    className="w-full sm:w-auto px-6 py-3 rounded-lg text-white font-medium min-h-[48px]"
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    Continuar
-                  </button>
+                  <div style={elementsStyle}>
+                    <button
+                      onClick={goNext}
+                      className="w-full sm:w-auto px-6 py-3 rounded-lg text-white font-medium min-h-[48px]"
+                      style={buttonStyle}
+                    >
+                      Continuar
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -415,13 +438,14 @@ function PublicFormContent() {
                     primaryColor={primaryColor}
                     error={fieldError}
                     appearance={appearance}
+                    align={align?.elements}
                   />
 
-                  <div className="mt-6 sm:mt-8">
+                  <div className="mt-6 sm:mt-8" style={elementsStyle}>
                     <button
                       onClick={goNext}
                       className="w-full sm:w-auto px-6 py-3 rounded-lg text-white font-medium text-sm min-h-[48px]"
-                      style={{ backgroundColor: primaryColor }}
+                      style={buttonStyle}
                     >
                       OK ✓
                     </button>

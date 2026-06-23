@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { alignToJustify } from '@/lib/field-alignment'
+import type { FieldAlign } from '@/types'
 
 interface FormFieldInputProps {
   field: any
@@ -10,6 +12,7 @@ interface FormFieldInputProps {
   onSubmit: () => void
   primaryColor: string
   error?: string
+  align?: FieldAlign
   appearance?: {
     textColor?: string
     descriptionColor?: string
@@ -27,6 +30,7 @@ export function FormFieldInput({
   onSubmit,
   primaryColor,
   error,
+  align,
   appearance = {},
 }: FormFieldInputProps) {
   const settings = field.settings || {}
@@ -250,7 +254,7 @@ export function FormFieldInput({
       {/* Satisfaction Scale */}
       {field.type === 'satisfaction_scale' && (
         <div>
-          <div className="grid grid-cols-5 sm:grid-cols-6 md:flex md:flex-wrap md:justify-center gap-2 my-4">
+          <div className={cn('grid grid-cols-5 sm:grid-cols-6 md:flex md:flex-wrap gap-2 my-4', alignToJustify[align || 'center'])}>
             {Array.from(
               { length: (settings.scaleMax ?? 10) - (settings.scaleMin ?? 0) + 1 },
               (_, i) => (settings.scaleMin ?? 0) + i

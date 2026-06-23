@@ -65,6 +65,16 @@ export interface FormFieldSettings {
   // File upload
   maxFileSize?: number // in MB
   allowedFileTypes?: string[]
+  // Alinhamento por campo (esquerda/centro/direita) — Titulo, Descricao, Elementos
+  alignment?: FieldAlignment
+}
+
+export type FieldAlign = 'left' | 'center' | 'right'
+
+export interface FieldAlignment {
+  title?: FieldAlign
+  description?: FieldAlign
+  elements?: FieldAlign
 }
 
 export interface FieldMedia {
