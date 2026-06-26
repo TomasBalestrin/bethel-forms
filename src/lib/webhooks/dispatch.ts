@@ -8,16 +8,12 @@ export const MAX_BATCH = 200
 // Backoff por número da tentativa já feita (1-based). Após esgotar = morto.
 const BACKOFF_MINUTES = [1, 5, 30, 120, 360]
 
-// Objeto enviado ao receptor. Campos canônicos (nome/email/telefone/cpf/
-// data_nascimento) vão como string minúscula; o resto em campos_extras.
+// Objeto enviado ao receptor. Campos semânticos (nome/email/...) são mapeados
+// na plataforma de destino; aqui mandamos todos os campos como campos_extras.
 export interface ReceptorObject {
   event_id: string
-  nome?: string
-  email?: string
-  telefone?: string
-  cpf?: string
-  data_nascimento?: string
-  campos_extras: Record<string, string>
+  evento: { tipo: string; occurred_at: string | null }
+  campos_extras: Record<string, any>
 }
 
 // ---- SSRF guard ---------------------------------------------------------
@@ -70,49 +66,15 @@ export async function assertUrlAllowed(raw: string): Promise<void> {
 
 // ---- Payload ------------------------------------------------------------
 
-/** Converte qualquer value (JSONB) em string. Vazio -> ''. */
-function toStr(v: any): string {
-  if (v === null || v === undefined) return ''
-  if (typeof v === 'string') return v
-  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
-  if (Array.isArray(v)) return v.map(toStr).filter(Boolean).join(', ')
-  if (typeof v === 'object') {
-    // multiple_choice com texto: { option, text }
-    if (typeof v.text === 'string' && v.text) return v.option ? `${v.option}: ${v.text}` : v.text
-    return v.option ?? v.label ?? v.value ?? JSON.stringify(v)
-  }
-  return String(v)
-}
-
-/** Mapeia tipo/título do campo para a chave canônica do receptor (ou null). */
-function canonicalKey(type: string | null, title: string | null): string | null {
-  const t = (title || '').toLowerCase()
-  switch (type) {
-    case 'email':
-      return 'email'
-    case 'phone':
-      return 'telefone'
-    case 'cpf':
-      return 'cpf'
-    case 'full_name':
-      return 'nome'
-    case 'date':
-      return /nasc|nascimento|birth/.test(t) ? 'data_nascimento' : null
-    case 'short_text':
-      return /(^|\s)nome($|\s)|nome completo|seu nome/.test(t) ? 'nome' : null
-  }
-  return null
-}
-
-/** Monta o objeto de um lead: event_id + chaves canônicas (string) + campos_extras. */
+/** Monta o objeto de um lead: event_id estável + todos os campos como campos_extras. */
 async function buildLeadObject(
   formId: string,
   responseId: string,
-  _event: string
+  event: string
 ): Promise<ReceptorObject | null> {
   const { data: response } = await supabaseAdmin
     .from('responses')
-    .select('id, response_answers(value, field_id, form_fields(type, title, "order"))')
+    .select('id, completed_at, response_answers(value, field_id, form_fields(title, "order"))')
     .eq('id', responseId)
     .eq('form_id', formId)
     .single()
@@ -122,31 +84,22 @@ async function buildLeadObject(
     (a: any, b: any) => (a.form_fields?.order ?? 0) - (b.form_fields?.order ?? 0)
   )
 
-  const obj: ReceptorObject = { event_id: response.id, campos_extras: {} }
-  const usedCanonical = new Set<string>()
-
+  const campos_extras: Record<string, any> = {}
   for (const a of answers) {
-    const type: string | null = a.form_fields?.type ?? null
     const title: string | null = a.form_fields?.title ?? null
-    const sval = toStr(a.value)
-    if (!sval) continue // pula vazio: nunca manda null/'' ao destino
-
-    const ck = canonicalKey(type, title)
-    if (ck && !usedCanonical.has(ck)) {
-      ;(obj as any)[ck] = sval
-      usedCanonical.add(ck)
-      continue
-    }
-
     if (!title) continue
     // Colisão de título: sufixa " (2)", " (3)"...
     let key = title
     let n = 2
-    while (key in obj.campos_extras) key = `${title} (${n++})`
-    obj.campos_extras[key] = sval
+    while (key in campos_extras) key = `${title} (${n++})`
+    campos_extras[key] = a.value
   }
 
-  return obj
+  return {
+    event_id: response.id,
+    evento: { tipo: event, occurred_at: (response as any).completed_at ?? null },
+    campos_extras,
+  }
 }
 
 // ---- Assinatura + envio -------------------------------------------------
