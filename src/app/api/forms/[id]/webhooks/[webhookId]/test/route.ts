@@ -35,8 +35,10 @@ export async function POST(
 
   const payload = {
     event_id: 'test',
-    evento: { tipo: 'webhook.test', occurred_at: new Date().toISOString() },
-    campos_extras: { Nome: 'Teste', Email: 'teste@exemplo.com', Telefone: '11999998888' },
+    nome: 'Teste',
+    email: 'teste@exemplo.com',
+    telefone: '11999998888',
+    campos_extras: {},
   }
 
   // Mesma rotina de assinatura do envio real (HMAC + X-Timestamp/X-Signature).
