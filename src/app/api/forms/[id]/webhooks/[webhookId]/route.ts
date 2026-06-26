@@ -43,6 +43,8 @@ export async function PUT(
   if (typeof body.name === 'string' || body.name === null) update.name = body.name
   if (typeof body.active === 'boolean') update.active = body.active
   if (body.headers && typeof body.headers === 'object') update.headers = body.headers
+  // Secret: só atualiza se vier não-vazio (campo em branco = manter o atual).
+  if (typeof body.secret === 'string' && body.secret.trim()) update.secret = body.secret.trim()
 
   if (Object.keys(update).length === 0)
     return NextResponse.json({ error: 'Nada para atualizar' }, { status: 400 })
@@ -57,7 +59,8 @@ export async function PUT(
 
   if (error || !data)
     return NextResponse.json({ error: 'Erro ao atualizar webhook' }, { status: 500 })
-  return NextResponse.json(data)
+  const { secret, ...rest } = data as any
+  return NextResponse.json({ ...rest, has_secret: !!secret })
 }
 
 export async function DELETE(

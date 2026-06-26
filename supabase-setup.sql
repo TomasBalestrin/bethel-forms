@@ -149,17 +149,20 @@ CREATE TABLE IF NOT EXISTS response_answers (
   answered_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Webhooks
+-- Webhooks (headers/name vêm da migration 003; secret da 004)
 CREATE TABLE IF NOT EXISTS webhooks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   form_id UUID NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
   active BOOLEAN NOT NULL DEFAULT true,
   send_partial BOOLEAN NOT NULL DEFAULT false,
+  headers JSONB NOT NULL DEFAULT '{}',
+  name TEXT,
+  secret TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Webhook logs
+-- Webhook logs (error vem da migration 003; next_retry_at da 004)
 CREATE TABLE IF NOT EXISTS webhook_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   webhook_id UUID NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
@@ -167,7 +170,9 @@ CREATE TABLE IF NOT EXISTS webhook_logs (
   status_code INT,
   request_payload JSONB NOT NULL,
   response_body TEXT,
+  error TEXT,
   attempt INT NOT NULL DEFAULT 1,
+  next_retry_at TIMESTAMPTZ,
   sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

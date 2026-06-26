@@ -15,6 +15,13 @@ async function ownForm(formId: string, userId: string) {
   return data
 }
 
+// Nunca expor o secret: troca por has_secret.
+function maskSecret(wh: any) {
+  if (!wh) return wh
+  const { secret, ...rest } = wh
+  return { ...rest, has_secret: !!secret }
+}
+
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const user = await getAuthenticatedUser()
   if (!user) return unauthorizedResponse()
@@ -28,7 +35,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
     .order('created_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: 'Erro ao buscar webhooks' }, { status: 500 })
-  return NextResponse.json({ webhooks: data || [] })
+  return NextResponse.json({ webhooks: (data || []).map(maskSecret) })
 }
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
@@ -44,7 +51,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Corpo inválido' }, { status: 400 })
   }
 
-  const { url, name, headers } = body
+  const { url, name, headers, secret } = body
   if (!url || typeof url !== 'string')
     return NextResponse.json({ error: 'URL é obrigatória' }, { status: 400 })
 
@@ -61,11 +68,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
       url,
       name: name || null,
       headers: headers && typeof headers === 'object' ? headers : {},
+      secret: typeof secret === 'string' && secret.trim() ? secret.trim() : null,
       active: true,
     })
     .select()
     .single()
 
   if (error) return NextResponse.json({ error: 'Erro ao criar webhook' }, { status: 500 })
-  return NextResponse.json(data, { status: 201 })
+  return NextResponse.json(maskSecret(data), { status: 201 })
 }
