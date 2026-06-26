@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth-helpers'
-import { dispatchWebhooks } from '@/lib/webhooks/dispatch'
+import { dispatchBatch, MAX_BATCH } from '@/lib/webhooks/dispatch'
 
 export const dynamic = 'force-dynamic'
-
-const MAX_BATCH = 500
 
 /**
  * Reenvia webhooks.
@@ -55,17 +53,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .eq('form_id', params.id)
     .in('id', responseIds)
   const validIds = new Set((valid || []).map((r: any) => r.id))
+  const ids = responseIds.filter((rid) => validIds.has(rid))
+
+  // Envio em lote (array <=200) por webhook, mesmo event_id = idempotente.
+  const results = await dispatchBatch(params.id, ids, {
+    webhookId: body.webhookId,
+    event: 'lead.resent',
+  })
 
   let sent = 0
   let failed = 0
-  for (const rid of responseIds) {
-    if (!validIds.has(rid)) continue
-    const results = await dispatchWebhooks(params.id, rid, {
-      webhookId: body.webhookId,
-      event: 'lead.resent',
-    })
-    for (const r of results) r.ok ? sent++ : failed++
-  }
+  for (const r of results) r.ok ? sent++ : failed++
 
   return NextResponse.json({ total: responseIds.length, sent, failed })
 }

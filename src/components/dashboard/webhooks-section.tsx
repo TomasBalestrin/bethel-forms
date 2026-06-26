@@ -10,6 +10,7 @@ interface Webhook {
   name: string | null
   active: boolean
   headers: Record<string, string>
+  has_secret?: boolean
 }
 
 interface WebhookLog {
@@ -33,8 +34,7 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
   // form de novo webhook
   const [url, setUrl] = useState('')
   const [name, setName] = useState('')
-  const [token, setToken] = useState('')
-  const [tokenHeader, setTokenHeader] = useState('Authorization')
+  const [secret, setSecret] = useState('')
   const [headerRows, setHeaderRows] = useState<{ key: string; value: string }[]>([])
   const [error, setError] = useState('')
   const [testing, setTesting] = useState<string | null>(null)
@@ -44,8 +44,7 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editUrl, setEditUrl] = useState('')
   const [editName, setEditName] = useState('')
-  const [editToken, setEditToken] = useState('')
-  const [editTokenHeader, setEditTokenHeader] = useState('Authorization')
+  const [editSecret, setEditSecret] = useState('')
   const [editError, setEditError] = useState('')
 
   useEffect(() => {
@@ -59,29 +58,11 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
     setLoading(false)
   }
 
-  // Monta o objeto headers a partir do token + headers extras, sobre uma base.
-  function mergeHeaders(
-    tHeader: string,
-    tValue: string,
-    rows: { key: string; value: string }[],
-    base: Record<string, string> = {}
-  ): Record<string, string> {
-    const headers: Record<string, string> = { ...base }
-    const name = (tHeader.trim() || 'Authorization')
-    // remove qualquer chave igual (case-insensitive) ao header do token
-    for (const k of Object.keys(headers)) {
-      if (k.toLowerCase() === name.toLowerCase()) delete headers[k]
-    }
+  // Monta o objeto de headers extras (avançado) a partir das linhas.
+  function headersFromRows(rows: { key: string; value: string }[]): Record<string, string> {
+    const headers: Record<string, string> = {}
     for (const r of rows) if (r.key.trim()) headers[r.key.trim()] = r.value
-    if (tValue.trim()) headers[name] = tValue.trim()
     return headers
-  }
-
-  // Extrai o token (header Authorization ou o primeiro) de um webhook existente.
-  function tokenFromHeaders(h: Record<string, string>): { name: string; value: string } {
-    const keys = Object.keys(h || {})
-    const k = keys.find((x) => x.toLowerCase() === 'authorization') || keys[0]
-    return k ? { name: k, value: h[k] } : { name: 'Authorization', value: '' }
   }
 
   async function create() {
@@ -90,11 +71,16 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
       setError('URL é obrigatória')
       return
     }
-    const headers = mergeHeaders(tokenHeader, token, headerRows)
+    const headers = headersFromRows(headerRows)
     const res = await fetch(`/api/forms/${formId}/webhooks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: url.trim(), name: name.trim() || null, headers }),
+      body: JSON.stringify({
+        url: url.trim(),
+        name: name.trim() || null,
+        secret: secret.trim() || null,
+        headers,
+      }),
     })
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
@@ -103,20 +89,17 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
     }
     setUrl('')
     setName('')
-    setToken('')
-    setTokenHeader('Authorization')
+    setSecret('')
     setHeaderRows([])
     setAdding(false)
     load()
   }
 
   function startEdit(wh: Webhook) {
-    const t = tokenFromHeaders(wh.headers)
     setEditingId(wh.id)
     setEditUrl(wh.url)
     setEditName(wh.name || '')
-    setEditTokenHeader(t.name)
-    setEditToken(t.value)
+    setEditSecret('')
     setEditError('')
   }
 
@@ -126,12 +109,16 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
       setEditError('URL é obrigatória')
       return
     }
-    // preserva outros headers, troca só o do token
-    const headers = mergeHeaders(editTokenHeader, editToken, [], wh.headers || {})
+    // Secret só é enviado se preenchido (em branco = manter o atual).
+    const payload: Record<string, any> = {
+      url: editUrl.trim(),
+      name: editName.trim() || null,
+    }
+    if (editSecret.trim()) payload.secret = editSecret.trim()
     const res = await fetch(`/api/forms/${formId}/webhooks/${wh.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: editUrl.trim(), name: editName.trim() || null, headers }),
+      body: JSON.stringify(payload),
     })
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
@@ -197,14 +184,11 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
             <div key={wh.id} className="border border-gray-200 rounded-lg p-4">
               {editingId === wh.id ? (
                 <div className="space-y-2">
-                  <Input placeholder="https://seu-destino.com/webhook" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} />
+                  <Input placeholder="https://seu-destino.com/webhook/SEU_TOKEN" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} />
                   <Input placeholder="Nome (opcional)" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                  <div className="flex gap-2">
-                    <Input placeholder="Header" value={editTokenHeader} onChange={(e) => setEditTokenHeader(e.target.value)} className="w-32" />
-                    <Input placeholder="Token / chave" value={editToken} onChange={(e) => setEditToken(e.target.value)} className="flex-1" />
-                  </div>
+                  <Input type="password" placeholder={wh.has_secret ? 'Secret (deixe em branco para manter)' : 'Secret (assinatura HMAC)'} value={editSecret} onChange={(e) => setEditSecret(e.target.value)} />
                   <p className="text-[10px] text-gray-400">
-                    Token enviado nesse header. Ex: Authorization = Bearer abc123
+                    Secret usado para assinar cada envio (HMAC-SHA256). Em branco mantém o atual.
                   </p>
                   {editError && <p className="text-xs text-red-600">{editError}</p>}
                   <div className="flex items-center gap-2">
@@ -221,11 +205,9 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
                   <div className="min-w-0">
                     {wh.name && <p className="text-sm font-medium text-gray-900">{wh.name}</p>}
                     <p className="text-xs text-gray-500 break-all font-mono">{wh.url}</p>
-                    {wh.headers && Object.keys(wh.headers).length > 0 && (
-                      <p className="text-xs text-green-600 mt-1">
-                        🔑 token/header configurado
-                      </p>
-                    )}
+                    <p className={`text-xs mt-1 ${wh.has_secret ? 'text-green-600' : 'text-amber-600'}`}>
+                      {wh.has_secret ? '🔒 secret configurado' : '⚠️ sem secret (envios vão falhar)'}
+                    </p>
                     {testResult[wh.id] && (
                       <p
                         className={`text-xs mt-1 ${
@@ -281,18 +263,15 @@ export function WebhooksSection({ formId, embedded = false }: { formId: string; 
 
           {adding ? (
             <div className="border border-blue-200 rounded-lg p-4 space-y-3 bg-blue-50/30">
-              <Input placeholder="https://seu-destino.com/webhook" value={url} onChange={(e) => setUrl(e.target.value)} />
+              <Input placeholder="https://seu-destino.com/webhook/SEU_TOKEN" value={url} onChange={(e) => setUrl(e.target.value)} />
               <Input placeholder="Nome (opcional)" value={name} onChange={(e) => setName(e.target.value)} />
 
-              {/* Token / autenticação do destino */}
+              {/* Secret de assinatura (HMAC) */}
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-gray-600">Token / autenticação (opcional)</p>
-                <div className="flex gap-2">
-                  <Input placeholder="Header" value={tokenHeader} onChange={(e) => setTokenHeader(e.target.value)} className="w-32" />
-                  <Input placeholder="Cole o token da plataforma" value={token} onChange={(e) => setToken(e.target.value)} className="flex-1" />
-                </div>
+                <p className="text-xs font-medium text-gray-600">Secret (assinatura HMAC)</p>
+                <Input type="password" placeholder="Cole o secret da plataforma" value={secret} onChange={(e) => setSecret(e.target.value)} />
                 <p className="text-[10px] text-gray-400">
-                  Enviado como header na requisição. Ex: Authorization = Bearer abc123, ou X-API-Key = sua-chave.
+                  Usado para assinar cada envio (HMAC-SHA256, headers X-Timestamp + X-Signature). O token da origem já vai na URL.
                 </p>
               </div>
 

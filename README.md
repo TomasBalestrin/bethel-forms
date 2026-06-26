@@ -43,12 +43,24 @@ npm run dev
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 DATABASE_URL=
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+# Protege o cron de retry de webhooks (/api/cron/webhooks-retry).
+# A Vercel envia "Authorization: Bearer <CRON_SECRET>" automaticamente.
+CRON_SECRET=
 ```
+
+### Webhooks
+
+Cada webhook envia um `POST` JSON assinado por HMAC-SHA256 ao destino. Configure
+por formulário: **URL** (com o token de origem) + **Secret** (assina cada envio).
+Headers enviados: `X-Timestamp` (epoch ms) e `X-Signature: hmac-sha256=<hex>`,
+calculado sobre `"{X-Timestamp}.{corpo cru}"`. Falhas `429`/`5xx`/rede entram em
+retry automático (backoff via cron `/api/cron/webhooks-retry`); `401`/`422` não.
 
 ## Estrutura do Projeto
 
