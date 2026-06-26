@@ -256,7 +256,7 @@ export function FormFieldInput({
         <div>
           <div className={cn('grid grid-cols-5 sm:grid-cols-6 md:flex md:flex-wrap gap-2 my-4', alignToJustify[align || 'center'])}>
             {Array.from(
-              { length: (settings.scaleMax ?? 10) - (settings.scaleMin ?? 0) + 1 },
+              { length: Math.max(0, (settings.scaleMax ?? 10) - (settings.scaleMin ?? 0) + 1) },
               (_, i) => (settings.scaleMin ?? 0) + i
             ).map((num) => (
               <button

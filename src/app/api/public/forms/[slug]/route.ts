@@ -28,7 +28,7 @@ export async function GET(
 
     // Use published version if available, otherwise load draft fields for preview
     let fields: any[] = []
-    if (publishedVersion?.fields) {
+    if (publishedVersion?.fields?.length) {
       fields = publishedVersion.fields
     } else {
       // Load draft fields directly from database (preview mode)
@@ -41,12 +41,14 @@ export async function GET(
       fields = (draftFields || []).map((f: any) => ({
         id: f.id,
         type: f.type,
+        order: f.order,
         title: f.title,
         description: f.description,
         placeholder: f.placeholder,
         required: f.required,
         settings: f.settings || {},
         media: f.media,
+        logic: f.logic,
         conversionEvent: f.conversion_event,
       }))
     }

@@ -93,14 +93,16 @@ export function fireTrackingEvent(
   data?: Record<string, any>,
   tracking?: { pixelId?: string; gaId?: string }
 ) {
-  // Meta Pixel event
-  if (tracking?.pixelId && typeof window !== 'undefined' && (window as any).fbq) {
-    const method = META_STANDARD_EVENTS.has(eventName) ? 'track' : 'trackCustom'
-    ;(window as any).fbq(method, eventName, data)
-  }
+  try {
+    // Meta Pixel event
+    if (tracking?.pixelId && typeof window !== 'undefined' && (window as any).fbq) {
+      const method = META_STANDARD_EVENTS.has(eventName) ? 'track' : 'trackCustom'
+      ;(window as any).fbq(method, eventName, data)
+    }
 
-  // GA4 event
-  if (tracking?.gaId && typeof window !== 'undefined' && (window as any).gtag) {
-    ;(window as any).gtag('event', eventName.toLowerCase(), data)
-  }
+    // GA4 event
+    if (tracking?.gaId && typeof window !== 'undefined' && (window as any).gtag) {
+      ;(window as any).gtag('event', eventName.toLowerCase(), data)
+    }
+  } catch {}
 }

@@ -195,7 +195,7 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
             {field.description && <p className="text-sm mb-4 whitespace-pre-line" style={descStyle}>{field.description}</p>}
             <div className={cn('flex gap-2 my-4', alignToJustify[align.elements])}>
               {Array.from(
-                { length: (settings.scaleMax ?? 10) - (settings.scaleMin ?? 0) + 1 },
+                { length: Math.max(0, (settings.scaleMax ?? 10) - (settings.scaleMin ?? 0) + 1) },
                 (_, i) => (settings.scaleMin ?? 0) + i
               ).map((num) => (
                 <button

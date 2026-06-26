@@ -236,7 +236,7 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
               <Input
                 type="number"
                 value={settings.scaleMin ?? 0}
-                onChange={(e) => updateSettings('scaleMin', parseInt(e.target.value))}
+                onChange={(e) => updateSettings('scaleMin', parseInt(e.target.value) || 0)}
               />
             </div>
             <div className="space-y-1.5">
@@ -244,7 +244,7 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
               <Input
                 type="number"
                 value={settings.scaleMax ?? 10}
-                onChange={(e) => updateSettings('scaleMax', parseInt(e.target.value))}
+                onChange={(e) => updateSettings('scaleMax', parseInt(e.target.value) || 10)}
               />
             </div>
           </div>
