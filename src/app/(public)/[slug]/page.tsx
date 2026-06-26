@@ -37,23 +37,30 @@ function PublicFormContent() {
     loadForm()
   }, [slug])
 
-  // Force background color on html/body to eliminate white borders on mobile
+  // Force background color on html/body to eliminate white borders on mobile.
+  // Wrapped in try/catch — WebViews in-app (ex: Facebook/Instagram) podem
+  // restringir acesso ao DOM e um throw aqui derrubaria a página inteira.
   useEffect(() => {
-    const bg = formData?.appearance?.backgroundColor || '#ffffff'
-    document.documentElement.style.backgroundColor = bg
-    document.body.style.backgroundColor = bg
-    // Set theme-color meta for mobile browser chrome
-    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement
-    if (!meta) {
-      meta = document.createElement('meta')
-      meta.name = 'theme-color'
-      document.head.appendChild(meta)
-    }
-    meta.content = bg
+    let meta: HTMLMetaElement | null = null
+    try {
+      const bg = formData?.appearance?.backgroundColor || '#ffffff'
+      document.documentElement.style.backgroundColor = bg
+      document.body.style.backgroundColor = bg
+      // Set theme-color meta for mobile browser chrome
+      meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement
+      if (!meta) {
+        meta = document.createElement('meta')
+        meta.name = 'theme-color'
+        document.head.appendChild(meta)
+      }
+      meta.content = bg
+    } catch {}
     return () => {
-      document.documentElement.style.backgroundColor = ''
-      document.body.style.backgroundColor = ''
-      if (meta) meta.content = '#ffffff'
+      try {
+        document.documentElement.style.backgroundColor = ''
+        document.body.style.backgroundColor = ''
+        if (meta) meta.content = '#ffffff'
+      } catch {}
     }
   }, [formData?.appearance?.backgroundColor])
 
@@ -288,6 +295,17 @@ function PublicFormContent() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">404</h1>
           <p className="text-gray-500">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (fields.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="text-center">
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">Formulário indisponível</h1>
+          <p className="text-gray-500">Este formulário ainda não tem perguntas publicadas.</p>
         </div>
       </div>
     )
