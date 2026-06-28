@@ -36,6 +36,7 @@ export default function ResponsesPage() {
   const [metrics, setMetrics] = useState<any>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [resending, setResending] = useState(false)
+  const [channels, setChannels] = useState<{ webhook: boolean; hub: boolean }>({ webhook: false, hub: false })
 
   useEffect(() => {
     if (authStatus === 'unauthenticated') router.push('/login')
@@ -68,6 +69,7 @@ export default function ResponsesPage() {
       const data = await res.json()
       setResponses(data.responses)
       setPagination(data.pagination)
+      if (data.channels) setChannels(data.channels)
       setSelectedIds(new Set())
     }
     setLoading(false)
@@ -116,6 +118,42 @@ export default function ResponsesPage() {
     setResending(false)
     if (res.ok) alert(`Reenvio: ${d.sent} ok, ${d.failed} falha`)
     else alert(d.error || 'Erro ao reenviar')
+  }
+
+  async function bulkResendHub() {
+    if (selectedIds.size === 0) return
+    setResending(true)
+    const res = await fetch(`/api/forms/${formId}/hub/resend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responseIds: Array.from(selectedIds) }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setResending(false)
+    if (res.ok) {
+      alert(`Reenvio Hub: ${d.sent} ok, ${d.failed} falha (${d.total} resposta(s))`)
+      setSelectedIds(new Set())
+      fetchResponses()
+    } else {
+      alert(d.error || 'Erro ao reenviar para o Hub')
+    }
+  }
+
+  async function resendOneHub(responseId: string) {
+    setResending(true)
+    const res = await fetch(`/api/forms/${formId}/hub/resend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responseId }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setResending(false)
+    if (res.ok) {
+      alert(`Reenvio Hub: ${d.sent} ok, ${d.failed} falha`)
+      fetchResponses()
+    } else {
+      alert(d.error || 'Erro ao reenviar para o Hub')
+    }
   }
 
   async function fetchMetrics() {
@@ -212,6 +250,38 @@ export default function ResponsesPage() {
     return phone
   }
 
+  const showStatusCol = channels.webhook || channels.hub
+
+  // Badge do último disparo de um canal. null = canal configurado mas sem envio
+  // ainda (aguardando). undefined = não renderiza.
+  function channelBadge(label: string, st: any) {
+    if (st === undefined) return null
+    if (!st) {
+      return (
+        <span
+          title={`${label}: aguardando envio`}
+          className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-400 whitespace-nowrap"
+        >
+          {label} ·
+        </span>
+      )
+    }
+    const ok = st.statusCode !== null && st.statusCode >= 200 && st.statusCode < 300
+    const title = ok
+      ? `${label}: enviado${st.acao ? ' (' + st.acao + ')' : ''}`
+      : `${label}: ${st.error || st.statusCode || 'falha'}`
+    return (
+      <span
+        title={title}
+        className={`px-1.5 py-0.5 rounded text-[10px] font-medium whitespace-nowrap ${
+          ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}
+      >
+        {label} {ok ? '✓' : '✕'}
+      </span>
+    )
+  }
+
   const selectedIdx = selectedResponse ? responses.indexOf(selectedResponse) : -1
 
   return (
@@ -272,14 +342,26 @@ export default function ResponsesPage() {
           <span className="text-xs font-medium text-blue-700">
             {selectedIds.size} selecionada(s)
           </span>
-          <button
-            onClick={bulkResend}
-            disabled={resending}
-            className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            <RefreshCw size={12} />
-            {resending ? 'Reenviando...' : 'Reenviar webhook'}
-          </button>
+          {channels.webhook && (
+            <button
+              onClick={bulkResend}
+              disabled={resending}
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            >
+              <RefreshCw size={12} />
+              {resending ? 'Reenviando...' : 'Reenviar webhook'}
+            </button>
+          )}
+          {channels.hub && (
+            <button
+              onClick={bulkResendHub}
+              disabled={resending}
+              className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50"
+            >
+              <RefreshCw size={12} />
+              {resending ? 'Reenviando...' : 'Reenviar Hub'}
+            </button>
+          )}
           <button
             onClick={() => setSelectedIds(new Set())}
             className="text-xs text-gray-500 hover:text-gray-700"
@@ -304,6 +386,9 @@ export default function ResponsesPage() {
                   />
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 w-12">#</th>
+                {showStatusCol && (
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 whitespace-nowrap">Envio</th>
+                )}
                 <th className="w-10 px-1"></th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 whitespace-nowrap">Data de preenchimento</th>
                 {fields.map((f: any, i: number) => (
@@ -321,13 +406,13 @@ export default function ResponsesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={fields.length + 4 + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 4 + (showStatusCol ? 1 : 0) + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
                     Carregando...
                   </td>
                 </tr>
               ) : responses.length === 0 ? (
                 <tr>
-                  <td colSpan={fields.length + 4 + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={fields.length + 4 + (showStatusCol ? 1 : 0) + UTM_COLUMNS.length} className="text-center py-16 text-gray-400 text-sm">
                     Nenhuma resposta ainda
                   </td>
                 </tr>
@@ -349,6 +434,14 @@ export default function ResponsesPage() {
                     <td className="px-4 py-3 text-xs text-gray-400 font-medium">
                       {pagination.total - ((pagination.page - 1) * 50 + idx)}
                     </td>
+                    {showStatusCol && (
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1 items-start">
+                          {channels.webhook && channelBadge('Webhook', response.dispatchStatus?.webhook)}
+                          {channels.hub && channelBadge('Hub', response.dispatchStatus?.hub)}
+                        </div>
+                      </td>
+                    )}
                     <td className="px-1 py-3">
                       <ColorTagPicker
                         color={response.tags?.[0] || null}
@@ -617,14 +710,26 @@ export default function ResponsesPage() {
                       Voltar ao topo
                     </button>
                     <div className="flex items-center gap-4">
-                      <button
-                        onClick={() => resendOne(selectedResponse.id)}
-                        disabled={resending}
-                        className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
-                      >
-                        <RefreshCw size={12} />
-                        Reenviar webhook
-                      </button>
+                      {channels.webhook && (
+                        <button
+                          onClick={() => resendOne(selectedResponse.id)}
+                          disabled={resending}
+                          className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
+                        >
+                          <RefreshCw size={12} />
+                          Reenviar webhook
+                        </button>
+                      )}
+                      {channels.hub && (
+                        <button
+                          onClick={() => resendOneHub(selectedResponse.id)}
+                          disabled={resending}
+                          className="flex items-center gap-1.5 text-xs text-purple-500 hover:text-purple-700 disabled:opacity-50"
+                        >
+                          <RefreshCw size={12} />
+                          Reenviar Hub
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteResponse(selectedResponse.id)}
                         className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600"

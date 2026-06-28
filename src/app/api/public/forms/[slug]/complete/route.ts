@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { dispatchWebhooks } from '@/lib/webhooks/dispatch'
+import { dispatchHub } from '@/lib/hub/dispatch'
 
 export async function POST(
   request: Request,
@@ -90,6 +91,10 @@ export async function POST(
     // Dispara webhooks do lead (best-effort, nunca lança). Aguardado para
     // garantir entrega/log antes do serverless encerrar.
     await dispatchWebhooks(form.id, responseId, { event: 'lead.completed' })
+
+    // Dispara o Hub (best-effort; o gate interno só envia se a integração
+    // estiver ligada, testada e com o schema inalterado desde o teste).
+    await dispatchHub(form.id, responseId, { event: 'lead.completed' })
 
     return NextResponse.json(updated)
   } catch (error) {

@@ -176,6 +176,23 @@ CREATE TABLE IF NOT EXISTS webhook_logs (
   sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Hub logs (integração Bethel Base; config fica em forms.settings.integration; ver migration 005)
+CREATE TABLE IF NOT EXISTS hub_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  form_id UUID NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
+  response_id UUID,
+  is_test BOOLEAN NOT NULL DEFAULT false,
+  grupo_id TEXT,
+  etapa_id TEXT,
+  status_code INT,
+  acao TEXT,
+  request_payload JSONB NOT NULL,
+  response_body TEXT,
+  error TEXT,
+  event_id TEXT,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Exports
 CREATE TABLE IF NOT EXISTS exports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

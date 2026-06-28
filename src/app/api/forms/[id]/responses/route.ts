@@ -14,7 +14,7 @@ export async function GET(
 
     const { data: form } = await supabaseAdmin
       .from('forms')
-      .select('id')
+      .select('id, settings')
       .eq('id', params.id)
       .eq('user_id', user.id)
       .single()
@@ -46,6 +46,46 @@ export async function GET(
       return NextResponse.json({ error: 'Erro ao buscar respostas' }, { status: 500 })
     }
 
+    const responseIds = (responses || []).map((r: any) => r.id)
+
+    // Canais configurados: webhook (existe webhook) e hub (integração ativa).
+    const { data: webhooks } = await supabaseAdmin
+      .from('webhooks')
+      .select('id')
+      .eq('form_id', params.id)
+    const webhookIds = (webhooks || []).map((w: any) => w.id)
+    const hubEnabled = !!(form as any).settings?.integration?.enabled
+    const channels = { webhook: webhookIds.length > 0, hub: hubEnabled }
+
+    // Último status por resposta em cada canal.
+    const webhookStatus = new Map<string, { statusCode: number | null; error: string | null }>()
+    if (webhookIds.length > 0 && responseIds.length > 0) {
+      const { data: wLogs } = await supabaseAdmin
+        .from('webhook_logs')
+        .select('response_id, status_code, error, sent_at')
+        .in('webhook_id', webhookIds)
+        .in('response_id', responseIds)
+        .order('sent_at', { ascending: false })
+      for (const l of wLogs || []) {
+        if (!webhookStatus.has(l.response_id))
+          webhookStatus.set(l.response_id, { statusCode: l.status_code, error: l.error })
+      }
+    }
+
+    const hubStatus = new Map<string, { statusCode: number | null; error: string | null; acao: string | null }>()
+    if (channels.hub && responseIds.length > 0) {
+      const { data: hLogs } = await supabaseAdmin
+        .from('hub_logs')
+        .select('response_id, status_code, error, acao, sent_at')
+        .eq('form_id', params.id)
+        .in('response_id', responseIds)
+        .order('sent_at', { ascending: false })
+      for (const l of hLogs || []) {
+        if (l.response_id && !hubStatus.has(l.response_id))
+          hubStatus.set(l.response_id, { statusCode: l.status_code, error: l.error, acao: l.acao })
+      }
+    }
+
     const transformed = (responses || []).map((r: any) => ({
       id: r.id,
       formId: r.form_id,
@@ -55,6 +95,10 @@ export async function GET(
       createdAt: r.created_at,
       completedAt: r.completed_at,
       durationSeconds: r.duration_seconds,
+      dispatchStatus: {
+        webhook: webhookStatus.get(r.id) || null,
+        hub: hubStatus.get(r.id) || null,
+      },
       answers: (r.response_answers || []).map((a: any) => ({
         id: a.id,
         responseId: a.response_id,
@@ -76,6 +120,7 @@ export async function GET(
 
     return NextResponse.json({
       responses: transformed,
+      channels,
       pagination: {
         page,
         limit,
