@@ -85,7 +85,9 @@ export function FormTopBar({
           <span className="text-xs text-gray-400 flex-shrink-0">Salvando...</span>
         )}
         {hasChanges && !saving && (
-          <span className="text-xs text-amber-500 flex-shrink-0">Alterações não salvas</span>
+          <span className="text-xs text-amber-500 flex-shrink-0">
+            Alterações não publicadas — clique Publicar para atualizar o link
+          </span>
         )}
         {saveError && (
           <span className="text-xs text-red-500 flex-shrink-0">{saveError}</span>

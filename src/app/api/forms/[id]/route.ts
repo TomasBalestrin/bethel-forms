@@ -95,7 +95,15 @@ export async function PUT(
     }
     if (data.name !== undefined) updateData.name = data.name
     if (data.slug !== undefined) updateData.slug = data.slug
-    if (data.settings !== undefined) updateData.settings = data.settings
+    if (data.settings !== undefined) {
+      // integration tem dono externo (endpoints /integration e sendTest). O editor
+      // manda o settings inteiro com a integration possivelmente desatualizada do
+      // snapshot -> descarta a do payload e preserva a atual do banco.
+      const { integration: _ignored, ...incoming } = data.settings || {}
+      updateData.settings = form.settings?.integration
+        ? { ...incoming, integration: form.settings.integration }
+        : incoming
+    }
 
     const { data: updated, error } = await supabaseAdmin
       .from('forms')
