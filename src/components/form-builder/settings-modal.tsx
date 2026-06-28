@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { WebhooksSection } from '@/components/dashboard/webhooks-section'
+import { IntegrationSection } from '@/components/dashboard/integration-section'
 
 interface SettingsModalProps {
   open: boolean
@@ -115,6 +116,13 @@ export function SettingsModal({ open, onClose, settings, onUpdate, formId }: Set
             <Toggle value={tracking.utmEnabled} onChange={() => onUpdate({ tracking: { utmEnabled: !tracking.utmEnabled } })} />
           </div>
         </Section>
+
+        {/* Integrações (Hub) — acima de Webhooks, persiste via API própria */}
+        {formId && (
+          <div className="border-t border-gray-200 pt-8">
+            <IntegrationSection formId={formId} />
+          </div>
+        )}
 
         {/* Webhooks — persiste via API própria, independente do Publicar */}
         {formId && (

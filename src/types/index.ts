@@ -121,6 +121,18 @@ export interface FormAppearance {
   progressBar?: 'bar' | 'steps' | 'hidden'
 }
 
+// Integração com o Hub (Bethel Base). Config única por form; vive em
+// forms.settings.integration. fields_signature + tested_at "armam" o envio.
+export interface FormIntegration {
+  enabled?: boolean
+  grupo_id?: string | null
+  grupo_nome?: string | null
+  etapa_id?: string | null
+  etapa_nome?: string | null
+  fields_signature?: string | null
+  tested_at?: string | null
+}
+
 export interface FormSettings {
   appearance: FormAppearance
   tracking: {
@@ -129,12 +141,37 @@ export interface FormSettings {
     gtmId?: string
     utmEnabled?: boolean
   }
+  integration?: FormIntegration
   customDomain?: string
   language?: 'pt-BR' | 'en' | 'es'
   blockedMessage?: string
   embedSettings?: {
     type: 'fullpage' | 'popup' | 'widget'
   }
+}
+
+// Status do último disparo de cada canal, por resposta (UI de respostas).
+export interface DispatchChannelStatus {
+  statusCode: number | null
+  error: string | null
+  acao?: string | null
+}
+
+export interface ResponseDispatchStatus {
+  webhook: DispatchChannelStatus | null
+  hub: DispatchChannelStatus | null
+}
+
+export interface HubLog {
+  id: string
+  formId: string
+  responseId: string | null
+  isTest: boolean
+  statusCode: number | null
+  acao: string | null
+  error: string | null
+  eventId: string | null
+  sentAt: string
 }
 
 export interface FormWithFields {
