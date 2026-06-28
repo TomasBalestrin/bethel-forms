@@ -34,7 +34,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
     query = query.or('status_code.is.null,status_code.lt.200,status_code.gte.300')
 
   const { data, count, error } = await query
-  if (error) return NextResponse.json({ error: 'Erro ao buscar logs' }, { status: 500 })
+  if (error) {
+    // Tabela ainda não criada (migration 005 não aplicada): trata como vazio.
+    if ((error as any).code === '42P01') {
+      return NextResponse.json({ logs: [], pagination: { page, limit, total: 0, totalPages: 0 } })
+    }
+    return NextResponse.json({ error: 'Erro ao buscar logs' }, { status: 500 })
+  }
 
   const total = count || 0
   return NextResponse.json({
