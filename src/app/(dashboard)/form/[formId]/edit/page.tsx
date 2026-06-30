@@ -8,6 +8,7 @@ import { FormTopBar } from '@/components/dashboard/form-top-bar'
 import { FieldTypeSelector } from '@/components/form-builder/field-type-selector'
 import { FieldSettingsPanel } from '@/components/form-builder/field-settings-panel'
 import { FieldPreview } from '@/components/form-builder/field-preview'
+import { FormHeader } from '@/components/form-renderer/form-header'
 import { AppearancePanel } from '@/components/form-builder/appearance-panel'
 import { SettingsModal } from '@/components/form-builder/settings-modal'
 import { ResizeHandle } from '@/components/form-builder/resize-handle'
@@ -559,7 +560,18 @@ export default function FormEditorPage() {
             className="flex-1 flex items-center justify-center overflow-y-auto relative"
             style={{ backgroundColor: form.settings?.appearance?.backgroundColor || '#ffffff' }}
           >
-            {form.settings?.appearance?.logoUrl && (
+            {form.settings?.appearance?.headerEnabled && (
+              <div className="absolute top-0 left-0 right-0 z-10">
+                <FormHeader
+                  logoUrl={form.settings?.appearance?.logoUrl}
+                  headerName={form.settings?.appearance?.headerName}
+                  primaryColor={form.settings?.appearance?.primaryColor || '#2563eb'}
+                  textColor={form.settings?.appearance?.textColor || '#111827'}
+                  backgroundColor={form.settings?.appearance?.backgroundColor || '#ffffff'}
+                />
+              </div>
+            )}
+            {form.settings?.appearance?.logoUrl && !form.settings?.appearance?.headerEnabled && (
               <div className="absolute top-4 left-4">
                 <img src={form.settings.appearance.logoUrl} alt="" className="h-8 max-w-[140px] object-contain" />
               </div>

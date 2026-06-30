@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { FormFieldInput } from '@/components/form-renderer/form-field-input'
+import { FormHeader } from '@/components/form-renderer/form-header'
 import { TrackingScripts, fireTrackingEvent } from '@/components/form-renderer/tracking-scripts'
 import { cn } from '@/lib/utils'
 import { getFieldAlignment } from '@/lib/field-alignment'
@@ -144,6 +145,24 @@ function PublicFormContent() {
     .filter((f: any) => !['welcome', 'thanks', 'message'].includes(f.type))
     .filter((f: any) => answers[f.id] !== undefined).length
   const progress = totalInputFields > 0 ? (answeredInputFields / totalInputFields) * 100 : 0
+
+  const showProgress =
+    appearance.progressBar !== 'hidden' &&
+    currentField?.type !== 'welcome' &&
+    currentField?.type !== 'thanks'
+  const progressBarInner =
+    appearance.progressBar === 'steps' ? (
+      <div className="text-center py-2 text-sm text-gray-500">
+        {answeredInputFields} de {totalInputFields}
+      </div>
+    ) : (
+      <div className="h-1 bg-gray-200">
+        <div
+          className="h-full progress-bar-fill"
+          style={{ width: `${progress}%`, backgroundColor: primaryColor }}
+        />
+      </div>
+    )
 
   function validateField(field: any, value: any): string | null {
     if (field.required && (value === undefined || value === null || value === '')) {
@@ -327,29 +346,32 @@ function PublicFormContent() {
         gtmId={formData.tracking?.gtmId}
       />
 
-      {/* Progress Bar */}
-      {appearance.progressBar !== 'hidden' && currentField?.type !== 'welcome' && currentField?.type !== 'thanks' && (
-        <div className="fixed top-0 left-0 right-0 z-50">
-          {appearance.progressBar === 'steps' ? (
-            <div className="text-center py-2 text-sm text-gray-500">
-              {answeredInputFields} de {totalInputFields}
-            </div>
-          ) : (
-            <div className="h-1 bg-gray-200">
-              <div
-                className="h-full progress-bar-fill"
-                style={{ width: `${progress}%`, backgroundColor: primaryColor }}
-              />
+      {appearance.headerEnabled ? (
+        /* Cabeçalho fixo (opt-in): logo + nome + linha gradiente. Em todas as telas. */
+        <div className="sticky top-0 z-40" style={{ backgroundColor: appearance.backgroundColor || '#ffffff' }}>
+          <FormHeader
+            logoUrl={appearance.logoUrl}
+            headerName={appearance.headerName}
+            primaryColor={primaryColor}
+            textColor={textColor}
+            backgroundColor={appearance.backgroundColor || '#ffffff'}
+          />
+          {showProgress && progressBarInner}
+        </div>
+      ) : (
+        <>
+          {/* Progress Bar */}
+          {showProgress && (
+            <div className="fixed top-0 left-0 right-0 z-50">{progressBarInner}</div>
+          )}
+
+          {/* Logo flutuante */}
+          {appearance.logoUrl && (
+            <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10">
+              <img src={appearance.logoUrl} alt="Logo" className="h-6 sm:h-8 max-w-[100px] sm:max-w-[140px] object-contain" />
             </div>
           )}
-        </div>
-      )}
-
-      {/* Logo */}
-      {appearance.logoUrl && (
-        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10">
-          <img src={appearance.logoUrl} alt="Logo" className="h-6 sm:h-8 max-w-[100px] sm:max-w-[140px] object-contain" />
-        </div>
+        </>
       )}
 
       {/* Main Content */}
