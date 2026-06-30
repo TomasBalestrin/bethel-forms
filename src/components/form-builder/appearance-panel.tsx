@@ -82,6 +82,34 @@ function ColorRow({ label, value, onChange, hint }: { label: string; value: stri
   )
 }
 
+function ToggleRow({ label, checked, onChange, hint }: { label: string; checked: boolean; onChange: (v: boolean) => void; hint?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="space-y-0.5">
+        <Label>{label}</Label>
+        {hint && <p className="text-[10px] text-gray-400">{hint}</p>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors',
+          checked ? 'bg-blue-600' : 'bg-gray-300'
+        )}
+      >
+        <span
+          className={cn(
+            'inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform',
+            checked ? 'translate-x-4' : 'translate-x-0.5'
+          )}
+        />
+      </button>
+    </div>
+  )
+}
+
 export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
   const appearance = settings?.appearance || {}
 
@@ -92,6 +120,27 @@ export function AppearancePanel({ settings, onUpdate }: AppearancePanelProps) {
 
   return (
     <div className="p-4">
+      {/* Cabeçalho */}
+      <CollapsibleSection title="Cabeçalho" defaultOpen={true}>
+        <ToggleRow
+          label="Mostrar cabeçalho"
+          checked={!!appearance.headerEnabled}
+          onChange={(v) => updateAppearance('headerEnabled', v)}
+          hint="Barra fixa no topo: logo à esquerda, nome à direita, linha na cor principal."
+        />
+        <div className="space-y-1">
+          <Label>Nome (lado direito)</Label>
+          <Input
+            value={appearance.headerName || ''}
+            onChange={(e) => updateAppearance('headerName', e.target.value)}
+            placeholder="Ex: Cleiton Querobin"
+          />
+        </div>
+        <p className="text-[10px] text-gray-400">
+          A logo vem do campo <strong>Logotipo</strong> (seção Aparência). A linha usa a <strong>Cor principal</strong>.
+        </p>
+      </CollapsibleSection>
+
       {/* Aparência */}
       <CollapsibleSection title="Aparência" defaultOpen={true}>
         <ColorRow label="Cor principal" value={appearance.primaryColor || '#2563eb'} onChange={(v) => updateAppearance('primaryColor', v)} />

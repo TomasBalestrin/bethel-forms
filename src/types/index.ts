@@ -109,6 +109,8 @@ export type ConditionalOperator =
   | 'date_after'
 
 export interface FormAppearance {
+  headerEnabled?: boolean
+  headerName?: string
   logoUrl?: string
   backgroundImageUrl?: string
   backgroundColor?: string
