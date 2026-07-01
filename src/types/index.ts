@@ -68,8 +68,16 @@ export interface FormFieldSettings {
   ticketQrHorizontal?: FieldAlign                 // 'left' | 'center' | 'right'
   ticketQrSize?: number                           // lado do QR em px sobre canvas 1080w (default 320)
   ticketFieldId?: string                          // id do campo cujo valor aparece sob o QR
-  ticketTextColor?: string                        // cor do texto sob o QR (default #111827)
+  ticketTextColor?: string                        // cor do texto do rótulo (default #111827)
   ticketDownloadText?: string                     // CTA (default "Baixar ingresso")
+  ticketLabelPosition?: 'below' | 'side'          // rótulo abaixo ou ao lado do QR (default 'below')
+  ticketLabelVertical?: 'top' | 'middle' | 'bottom' // alinh. vertical do texto no modo 'side' (default 'middle')
+  ticketQrBorderColor?: string                    // cor da borda do QR (baked no PNG)
+  ticketQrBorderWidth?: number                    // largura da borda do QR em px sobre canvas 1080 (default 0)
+  ticketQrBorderRadius?: number                   // raio dos cantos do QR em px sobre canvas 1080 (default 0)
+  ticketImageBorderColor?: string                 // cor da moldura da imagem final (só CSS na tela)
+  ticketImageBorderWidth?: number                 // largura da moldura em px CSS (default 0)
+  ticketImageBorderRadius?: number                // raio da moldura em px CSS (default 8)
   // File upload
   maxFileSize?: number // in MB
   allowedFileTypes?: string[]

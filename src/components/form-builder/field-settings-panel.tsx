@@ -50,6 +50,32 @@ function AlignRow({
   )
 }
 
+// Seletor de cor (picker nativo + hex), mesmo padrão do appearance-panel.
+function ColorRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <div className="flex gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-10 h-10 rounded cursor-pointer border border-gray-300"
+        />
+        <Input value={value} onChange={(e) => onChange(e.target.value)} className="flex-1" />
+      </div>
+    </div>
+  )
+}
+
 interface FieldSettingsPanelProps {
   field: any
   onUpdate: (updates: any) => void
@@ -155,6 +181,11 @@ export function FieldSettingsPanel({ field, onUpdate, allFields = [] }: FieldSet
     { value: 'top', label: 'Topo' },
     { value: 'middle', label: 'Meio' },
     { value: 'bottom', label: 'Base' },
+  ]
+
+  const ticketLabelPosOpts: { value: 'below' | 'side'; label: string }[] = [
+    { value: 'below', label: 'Abaixo' },
+    { value: 'side', label: 'Ao lado' },
   ]
 
   return (
@@ -459,6 +490,138 @@ export function FieldSettingsPanel({ field, onUpdate, allFields = [] }: FieldSet
                       </option>
                     ))}
                 </select>
+              </div>
+
+              {/* Posição do rótulo em relação ao QR */}
+              {settings.ticketFieldId && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Posição do texto</Label>
+                    <div className="flex gap-1">
+                      {ticketLabelPosOpts.map(({ value: v, label: l }) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => updateSettings('ticketLabelPosition', v)}
+                          className={`px-2 py-1 text-xs rounded border transition-colors ${
+                            (settings.ticketLabelPosition || 'below') === v
+                              ? 'border-blue-300 bg-blue-50 text-blue-600'
+                              : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Alinhamento vertical do texto — só no modo "Ao lado" */}
+                  {settings.ticketLabelPosition === 'side' && (
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs">Alinhamento vertical</Label>
+                      <div className="flex gap-1">
+                        {ticketVerticalOpts.map(({ value: v, label: l }) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => updateSettings('ticketLabelVertical', v)}
+                            className={`px-2 py-1 text-xs rounded border transition-colors ${
+                              (settings.ticketLabelVertical || 'middle') === v
+                                ? 'border-blue-300 bg-blue-50 text-blue-600'
+                                : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                            }`}
+                          >
+                            {l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <ColorRow
+                    label="Cor do texto"
+                    value={settings.ticketTextColor || '#111827'}
+                    onChange={(v) => updateSettings('ticketTextColor', v)}
+                  />
+                </div>
+              )}
+
+              {/* Borda do QR (aparece no ingresso baixado) */}
+              <div className="space-y-2">
+                <Label className="uppercase tracking-wide text-[11px] text-gray-500">
+                  Borda do QR
+                </Label>
+                <ColorRow
+                  label="Cor da borda"
+                  value={settings.ticketQrBorderColor || '#111827'}
+                  onChange={(v) => updateSettings('ticketQrBorderColor', v)}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Largura (px)</Label>
+                    <Input
+                      type="number"
+                      value={settings.ticketQrBorderWidth ?? ''}
+                      onChange={(e) =>
+                        updateSettings('ticketQrBorderWidth', parseInt(e.target.value) || undefined)
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Arredondamento (px)</Label>
+                    <Input
+                      type="number"
+                      value={settings.ticketQrBorderRadius ?? ''}
+                      onChange={(e) =>
+                        updateSettings('ticketQrBorderRadius', parseInt(e.target.value) || undefined)
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Moldura da imagem final (só na tela, não no download) */}
+              <div className="space-y-2">
+                <Label className="uppercase tracking-wide text-[11px] text-gray-500">
+                  Moldura da imagem
+                </Label>
+                <ColorRow
+                  label="Cor da moldura"
+                  value={settings.ticketImageBorderColor || '#e5e7eb'}
+                  onChange={(v) => updateSettings('ticketImageBorderColor', v)}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Largura (px)</Label>
+                    <Input
+                      type="number"
+                      value={settings.ticketImageBorderWidth ?? ''}
+                      onChange={(e) =>
+                        updateSettings(
+                          'ticketImageBorderWidth',
+                          parseInt(e.target.value) || undefined
+                        )
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Arredondamento (px)</Label>
+                    <Input
+                      type="number"
+                      value={settings.ticketImageBorderRadius ?? ''}
+                      onChange={(e) =>
+                        updateSettings(
+                          'ticketImageBorderRadius',
+                          parseInt(e.target.value) || undefined
+                        )
+                      }
+                      placeholder="8"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Texto do botão de download */}
