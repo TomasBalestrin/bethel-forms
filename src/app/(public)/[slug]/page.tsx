@@ -66,6 +66,22 @@ function PublicFormContent() {
     }
   }, [formData?.appearance?.backgroundColor])
 
+  // Preload da arte do ingresso (thanksType='ticket') assim que o form carrega, pra
+  // ela já estar em cache quando o TicketView desenhar no canvas na tela final.
+  // crossOrigin='anonymous' precisa casar com o loadImage do drawTicket (src/lib/ticket.ts)
+  // — senão o browser não reusa o cache e baixa a imagem duas vezes.
+  useEffect(() => {
+    try {
+      const bg = (formData?.fields || []).find(
+        (f: any) => f?.settings?.thanksType === 'ticket' && f?.settings?.ticketBackgroundUrl
+      )?.settings?.ticketBackgroundUrl
+      if (!bg) return
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.src = bg
+    } catch {}
+  }, [formData])
+
   async function loadForm() {
     try {
       const res = await fetch(`/api/public/forms/${slug}?t=${Date.now()}`, { cache: 'no-store' })
