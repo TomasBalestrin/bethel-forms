@@ -3,8 +3,28 @@
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, QrCode } from 'lucide-react'
 import { getFieldAlignment, alignToJustify } from '@/lib/field-alignment'
+
+// Posição aproximada (CSS) do QR sobre a arte, pro preview do builder.
+// Espelha a matemática de src/lib/ticket.ts sobre um mock com aspect 1080/1440.
+function ticketQrBoxStyle(settings: any): React.CSSProperties {
+  const sizePct = ((settings.ticketQrSize || 320) / 1080) * 100
+  const padX = (64 / 1080) * 100
+  const padY = (64 / 1440) * 100
+  const h = settings.ticketQrHorizontal || 'center'
+  const v = settings.ticketQrVertical || 'middle'
+  const style: React.CSSProperties = { position: 'absolute', width: `${sizePct}%`, aspectRatio: '1 / 1' }
+  const transforms: string[] = []
+  if (h === 'left') style.left = `${padX}%`
+  else if (h === 'right') style.right = `${padX}%`
+  else { style.left = '50%'; transforms.push('translateX(-50%)') }
+  if (v === 'top') style.top = `${padY}%`
+  else if (v === 'bottom') style.bottom = `${padY}%`
+  else { style.top = '50%'; transforms.push('translateY(-50%)') }
+  if (transforms.length) style.transform = transforms.join(' ')
+  return style
+}
 
 interface FieldPreviewProps {
   field: any
@@ -237,6 +257,41 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
                   style={buttonStyle}
                 >
                   {settings.buttonText}
+                </button>
+              </div>
+            )}
+            {settings.thanksType === 'ticket' && (
+              <div className="mt-4 flex flex-col items-center">
+                {settings.ticketBackgroundUrl ? (
+                  <div
+                    className="relative w-40 rounded-lg overflow-hidden border border-gray-200"
+                    style={{ aspectRatio: '1080 / 1440' }}
+                  >
+                    <img
+                      src={settings.ticketBackgroundUrl}
+                      alt="Arte do ingresso"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div
+                      className="grid place-items-center bg-white/90 border border-gray-300 rounded"
+                      style={ticketQrBoxStyle(settings)}
+                    >
+                      <QrCode className="w-2/3 h-2/3 text-gray-700" />
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="w-40 grid place-items-center rounded-lg border border-dashed border-gray-300 text-gray-400 text-xs text-center px-2"
+                    style={{ aspectRatio: '1080 / 1440' }}
+                  >
+                    Envie a arte 1080×1440
+                  </div>
+                )}
+                <button
+                  className="mt-3 px-6 py-2 rounded-lg text-white font-medium"
+                  style={buttonStyle}
+                >
+                  {settings.ticketDownloadText || 'Baixar ingresso'}
                 </button>
               </div>
             )}

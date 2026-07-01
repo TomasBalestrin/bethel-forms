@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { FormFieldInput } from '@/components/form-renderer/form-field-input'
 import { FormHeader } from '@/components/form-renderer/form-header'
+import { TicketView } from '@/components/form-renderer/ticket-view'
 import { TrackingScripts, fireTrackingEvent } from '@/components/form-renderer/tracking-scripts'
 import { cn } from '@/lib/utils'
 import { getFieldAlignment } from '@/lib/field-alignment'
@@ -429,6 +430,14 @@ function PublicFormContent() {
                         {currentField.settings.buttonText || 'Continuar'}
                       </a>
                     </div>
+                  )}
+                  {currentField.settings?.thanksType === 'ticket' && (
+                    <TicketView
+                      responseId={responseId}
+                      answers={answers}
+                      settings={currentField.settings}
+                      buttonStyle={buttonStyle}
+                    />
                   )}
                 </div>
               )}

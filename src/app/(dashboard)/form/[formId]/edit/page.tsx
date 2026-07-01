@@ -594,6 +594,7 @@ export default function FormEditorPage() {
             {rightPanel === 'settings' ? (
               <FieldSettingsPanel
                 field={selectedField}
+                allFields={fields}
                 onUpdate={(updates) => {
                   if (selectedFieldId) updateField(selectedFieldId, updates)
                 }}
