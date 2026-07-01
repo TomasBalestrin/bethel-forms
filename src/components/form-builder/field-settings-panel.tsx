@@ -1,10 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Plus, Trash2, GripVertical, Type, AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Type, Upload, AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import { getFieldAlignment } from '@/lib/field-alignment'
 import type { FieldAlign } from '@/types'
@@ -52,9 +53,11 @@ function AlignRow({
 interface FieldSettingsPanelProps {
   field: any
   onUpdate: (updates: any) => void
+  allFields?: any[]
 }
 
-export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps) {
+export function FieldSettingsPanel({ field, onUpdate, allFields = [] }: FieldSettingsPanelProps) {
+  const [uploadingTicket, setUploadingTicket] = useState(false)
   if (!field) {
     return (
       <div className="p-6 text-center text-gray-400">
@@ -105,6 +108,54 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
     options[index] = { ...options[index], textInputPlaceholder: placeholder }
     updateSettings('options', options)
   }
+
+  function deleteTicketBg(url?: string) {
+    if (!url) return
+    // best-effort: remove a arte antiga do bucket
+    fetch(`/api/forms/${field.formId}/ticket-background`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    }).catch(() => {})
+  }
+
+  async function uploadTicketBackground(file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Imagem deve ter no máximo 5MB')
+      return
+    }
+    setUploadingTicket(true)
+    try {
+      const prev = settings.ticketBackgroundUrl
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`/api/forms/${field.formId}/ticket-background`, {
+        method: 'POST',
+        body: fd,
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json.url) {
+        alert(json.error || 'Erro ao enviar imagem')
+        return
+      }
+      updateSettings('ticketBackgroundUrl', json.url)
+      deleteTicketBg(prev)
+    } finally {
+      setUploadingTicket(false)
+    }
+  }
+
+  function removeTicketBackground() {
+    const prev = settings.ticketBackgroundUrl
+    updateSettings('ticketBackgroundUrl', '')
+    deleteTicketBg(prev)
+  }
+
+  const ticketVerticalOpts: { value: 'top' | 'middle' | 'bottom'; label: string }[] = [
+    { value: 'top', label: 'Topo' },
+    { value: 'middle', label: 'Meio' },
+    { value: 'bottom', label: 'Base' },
+  ]
 
   return (
     <div className="p-4 space-y-4">
@@ -280,6 +331,7 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
               <option value="message">Mensagem simples</option>
               <option value="redirect">Redirecionamento</option>
               <option value="download">Download de arquivo</option>
+              <option value="ticket">Ingresso / Ticket</option>
             </select>
           </div>
 
@@ -302,6 +354,123 @@ export function FieldSettingsPanel({ field, onUpdate }: FieldSettingsPanelProps)
                 />
               </div>
             </>
+          )}
+
+          {settings.thanksType === 'ticket' && (
+            <div className="space-y-3">
+              {/* Arte de fundo do ingresso */}
+              <div className="space-y-1.5">
+                <Label>Arte do ingresso (1080×1440)</Label>
+                {settings.ticketBackgroundUrl && (
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={settings.ticketBackgroundUrl}
+                      alt="Arte"
+                      className="h-16 w-12 object-cover rounded border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeTicketBackground}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                )}
+                <label className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md cursor-pointer hover:bg-blue-100 transition-colors w-fit">
+                  <Upload size={12} />
+                  {uploadingTicket
+                    ? 'Enviando…'
+                    : settings.ticketBackgroundUrl
+                    ? 'Trocar arte'
+                    : 'Upload da arte'}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    disabled={uploadingTicket}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadTicketBackground(file)
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* Posição do QR sobre a arte */}
+              <div className="space-y-2">
+                <Label className="uppercase tracking-wide text-[11px] text-gray-500">
+                  Posição do QR
+                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Vertical</Label>
+                  <div className="flex gap-1">
+                    {ticketVerticalOpts.map(({ value: v, label: l }) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => updateSettings('ticketQrVertical', v)}
+                        className={`px-2 py-1 text-xs rounded border transition-colors ${
+                          (settings.ticketQrVertical || 'middle') === v
+                            ? 'border-blue-300 bg-blue-50 text-blue-600'
+                            : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <AlignRow
+                  label="Horizontal"
+                  value={settings.ticketQrHorizontal || 'center'}
+                  onChange={(v) => updateSettings('ticketQrHorizontal', v)}
+                />
+              </div>
+
+              {/* Tamanho do QR */}
+              <div className="space-y-1.5">
+                <Label>Tamanho do QR (px)</Label>
+                <Input
+                  type="number"
+                  value={settings.ticketQrSize || ''}
+                  onChange={(e) =>
+                    updateSettings('ticketQrSize', parseInt(e.target.value) || undefined)
+                  }
+                  placeholder="320"
+                />
+              </div>
+
+              {/* Campo exibido como texto sob o QR */}
+              <div className="space-y-1.5">
+                <Label>Campo exibido sob o QR</Label>
+                <select
+                  value={settings.ticketFieldId || ''}
+                  onChange={(e) => updateSettings('ticketFieldId', e.target.value)}
+                  className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 text-sm"
+                >
+                  <option value="">Nenhum</option>
+                  {allFields
+                    .filter((f) => !['welcome', 'thanks', 'message'].includes(f.type))
+                    .map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.title || f.type}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Texto do botão de download */}
+              <div className="space-y-1.5">
+                <Label>Texto do botão</Label>
+                <Input
+                  value={settings.ticketDownloadText || ''}
+                  onChange={(e) => updateSettings('ticketDownloadText', e.target.value)}
+                  placeholder="Baixar ingresso"
+                />
+              </div>
+            </div>
           )}
         </div>
       )}

@@ -317,3 +317,16 @@ CREATE INDEX IF NOT EXISTS idx_responses_form_id ON responses(form_id);
 CREATE INDEX IF NOT EXISTS idx_response_answers_response_id ON response_answers(response_id);
 CREATE INDEX IF NOT EXISTS idx_response_answers_field_id ON response_answers(field_id);
 CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts(user_id);
+
+-- ============================================================
+-- Storage: bucket para artes de ingresso (thanksType = 'ticket')
+-- Arte-fundo 1080x1440 exibida no ingresso. Leitura pública;
+-- escrita apenas via service_role (as rotas usam supabaseAdmin).
+-- ============================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('ticket-assets', 'ticket-assets', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY IF NOT EXISTS "ticket-assets public read"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'ticket-assets');

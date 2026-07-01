@@ -55,13 +55,21 @@ export interface FormFieldSettings {
   scaleIcon?: 'numbers' | 'stars' | 'hearts' | 'emojis'
   termsText?: string
   // Thanks field settings
-  thanksType?: 'message' | 'redirect' | 'download' | 'checkout'
+  thanksType?: 'message' | 'redirect' | 'download' | 'checkout' | 'ticket'
   redirectUrl?: string
   redirectDelay?: number
   passUtms?: boolean
   downloadFileUrl?: string
   checkoutUrl?: string
   buttonText?: string
+  // Ingresso / ticket (thanksType === 'ticket')
+  ticketBackgroundUrl?: string                    // arte-fundo 1080x1440 (URL do bucket)
+  ticketQrVertical?: 'top' | 'middle' | 'bottom'  // posição vertical do QR
+  ticketQrHorizontal?: FieldAlign                 // 'left' | 'center' | 'right'
+  ticketQrSize?: number                           // lado do QR em px sobre canvas 1080w (default 320)
+  ticketFieldId?: string                          // id do campo cujo valor aparece sob o QR
+  ticketTextColor?: string                        // cor do texto sob o QR (default #111827)
+  ticketDownloadText?: string                     // CTA (default "Baixar ingresso")
   // File upload
   maxFileSize?: number // in MB
   allowedFileTypes?: string[]
