@@ -363,6 +363,24 @@ export default function FormEditorPage() {
         )
       }
 
+      // 4.5 Reafirma a ordem completa dos campos. Campos recém-criados ganham
+      //     um `order` calculado pelo POST (insere antes do thanks), que ignora
+      //     a posição arrastada — sem este passo o snapshot publica na ordem
+      //     errada. Usa os ids REAIS (temp → real via idMapping). Roda depois
+      //     de creates+deletes pra bater com o set atual do DB.
+      const orderedIds = orderedFields.map((f: any) => idMapping[f.id] || f.id)
+      const reorderRes = await fetch(`/api/forms/${formId}/fields/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fieldIds: orderedIds }),
+      })
+      if (!reorderRes.ok) {
+        const err = await reorderRes.json().catch(() => ({}))
+        setPublishError(err.error || 'Erro ao ordenar campos')
+        setPublishing(false)
+        return
+      }
+
       // 5. Publish
       const pubRes = await fetch(`/api/forms/${formId}/publish`, { method: 'POST' })
       const pubData = await pubRes.json()
