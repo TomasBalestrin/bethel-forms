@@ -23,7 +23,37 @@ function ticketQrBoxStyle(settings: any): React.CSSProperties {
   else if (v === 'bottom') style.bottom = `${padY}%`
   else { style.top = '50%'; transforms.push('translateY(-50%)') }
   if (transforms.length) style.transform = transforms.join(' ')
+  // Borda do QR — escalada do canvas 1080 pro mock (w-40 = 160px).
+  const scale = 160 / 1080
+  const bw = (settings.ticketQrBorderWidth || 0) * scale
+  const br = (settings.ticketQrBorderRadius || 0) * scale
+  if (bw > 0) {
+    style.border = `${bw}px solid ${settings.ticketQrBorderColor || '#111827'}`
+    style.boxSizing = 'border-box'
+  }
+  if (br > 0) style.borderRadius = `${br}px`
   return style
+}
+
+// Posição (CSS) do rótulo no mock, relativa à caixa do QR.
+function ticketLabelStyle(settings: any): React.CSSProperties {
+  const color = settings.ticketTextColor || '#111827'
+  if ((settings.ticketLabelPosition || 'below') === 'side') {
+    const v = settings.ticketLabelVertical || 'middle'
+    const s: React.CSSProperties = { position: 'absolute', left: '100%', marginLeft: '3px', color }
+    if (v === 'top') s.top = '0'
+    else if (v === 'bottom') s.bottom = '0'
+    else { s.top = '50%'; s.transform = 'translateY(-50%)' }
+    return s
+  }
+  return {
+    position: 'absolute',
+    top: '100%',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    marginTop: '2px',
+    color,
+  }
 }
 
 interface FieldPreviewProps {
@@ -264,8 +294,15 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
               <div className="mt-4 flex flex-col items-center">
                 {settings.ticketBackgroundUrl ? (
                   <div
-                    className="relative w-40 rounded-lg overflow-hidden border border-gray-200"
-                    style={{ aspectRatio: '1080 / 1440' }}
+                    className="relative w-40 overflow-hidden"
+                    style={{
+                      aspectRatio: '1080 / 1440',
+                      border:
+                        (settings.ticketImageBorderWidth || 0) > 0
+                          ? `${settings.ticketImageBorderWidth}px solid ${settings.ticketImageBorderColor || '#e5e7eb'}`
+                          : '1px solid #e5e7eb',
+                      borderRadius: settings.ticketImageBorderRadius ?? 8,
+                    }}
                   >
                     <img
                       src={settings.ticketBackgroundUrl}
@@ -277,6 +314,14 @@ export function FieldPreview({ field, primaryColor: primaryColorProp = '#2563eb'
                       style={ticketQrBoxStyle(settings)}
                     >
                       <QrCode className="w-2/3 h-2/3 text-gray-700" />
+                      {settings.ticketFieldId && (
+                        <span
+                          className="whitespace-nowrap text-[7px] font-semibold leading-none"
+                          style={ticketLabelStyle(settings)}
+                        >
+                          Texto
+                        </span>
+                      )}
                     </div>
                   </div>
                 ) : (

@@ -37,6 +37,15 @@ export function TicketView({ responseId, answers, settings, buttonStyle }: Ticke
   const textColor = settings.ticketTextColor || '#111827'
   const label = settings.ticketFieldId ? coerceValue(answers[settings.ticketFieldId]) : ''
   const downloadText = settings.ticketDownloadText || 'Baixar ingresso'
+  const labelPosition = (settings.ticketLabelPosition || 'below') as 'below' | 'side'
+  const labelVertical = (settings.ticketLabelVertical || 'middle') as QrVertical
+  const qrBorderColor = settings.ticketQrBorderColor || '#111827'
+  const qrBorderWidth = settings.ticketQrBorderWidth || 0
+  const qrBorderRadius = settings.ticketQrBorderRadius || 0
+  // Moldura da imagem final — só CSS na tela, não entra no PNG baixado.
+  const imgBorderColor = settings.ticketImageBorderColor || '#e5e7eb'
+  const imgBorderWidth = settings.ticketImageBorderWidth || 0
+  const imgBorderRadius = settings.ticketImageBorderRadius ?? 8
 
   useEffect(() => {
     let cancelled = false
@@ -57,6 +66,11 @@ export function TicketView({ responseId, answers, settings, buttonStyle }: Ticke
           horizontal,
           text: label,
           textColor,
+          labelPosition,
+          labelVertical,
+          qrBorderColor,
+          qrBorderWidth,
+          qrBorderRadius,
         })
         if (cancelled) return
         setPreviewUrl(canvas.toDataURL('image/png'))
@@ -71,7 +85,20 @@ export function TicketView({ responseId, answers, settings, buttonStyle }: Ticke
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [responseId, bgUrl, size, vertical, horizontal, label, textColor])
+  }, [
+    responseId,
+    bgUrl,
+    size,
+    vertical,
+    horizontal,
+    label,
+    textColor,
+    labelPosition,
+    labelVertical,
+    qrBorderColor,
+    qrBorderWidth,
+    qrBorderRadius,
+  ])
 
   function handleDownload() {
     const canvas = canvasRef.current
@@ -106,7 +133,12 @@ export function TicketView({ responseId, answers, settings, buttonStyle }: Ticke
             <img
               src={previewUrl}
               alt="Ingresso"
-              className="w-full max-w-sm rounded-lg shadow-md"
+              className="w-full max-w-sm shadow-md"
+              style={{
+                border:
+                  imgBorderWidth > 0 ? `${imgBorderWidth}px solid ${imgBorderColor}` : undefined,
+                borderRadius: imgBorderRadius,
+              }}
             />
           )}
           <button
